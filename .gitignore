@@ -25,9 +25,10 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
-venv/
-ENV/
-env/
+
+# Conda environments
+.conda/
+envs/
 
 # Prisma
 backend/prisma/migrations/

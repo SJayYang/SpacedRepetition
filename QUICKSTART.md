@@ -4,7 +4,8 @@ Complete setup instructions to get SpaceRep running locally.
 
 ## Prerequisites
 
-- **Python 3.11+**
+- **Conda** (Anaconda or Miniconda)
+- **Python 3.11+** (installed via conda)
 - **Node.js 18+**
 - **Supabase account** (free tier)
 - **Google Cloud Console project** (for OAuth)
@@ -55,14 +56,14 @@ Complete setup instructions to get SpaceRep running locally.
 ```bash
 cd backend
 
-# Create virtual environment
-python -m venv venv
+# Create conda environment with Python 3.11
+conda create -n spacerep python=3.11 -y
 
-# Activate virtual environment
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Activate conda environment
+conda activate spacerep
 
 # Install all dependencies
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 ### 2.2 Configure Environment
@@ -291,7 +292,7 @@ Once set up, you only need two commands:
 **Terminal 1 - Backend:**
 ```bash
 cd backend
-source venv/bin/activate  # Windows: venv\Scripts\activate
+conda activate spacerep
 uvicorn app.main:app --reload
 ```
 

@@ -8,15 +8,15 @@ echo "SpaceRep Database Setup"
 echo "======================================"
 echo ""
 
-# Check if .env exists
-if [ ! -f .env ]; then
-    echo "❌ Error: .env file not found!"
+# Check if .env exists in parent directory
+if [ ! -f ../.env ]; then
+    echo "❌ Error: .env file not found in parent directory!"
     echo "Please create .env from .env.example and add your Supabase credentials."
     exit 1
 fi
 
 # Check if DATABASE_URL is set
-if ! grep -q "DATABASE_URL=" .env; then
+if ! grep -q "DATABASE_URL=" ../.env; then
     echo "❌ Error: DATABASE_URL not found in .env"
     echo "Please add your Supabase database connection string to .env"
     exit 1

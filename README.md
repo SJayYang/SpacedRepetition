@@ -187,7 +187,8 @@ SpacedRepetition/
 ## Development
 
 ### Prerequisites
-- Python 3.11+
+- Conda (Anaconda or Miniconda)
+- Python 3.11+ (via conda)
 - Node.js 18+
 - Supabase account (free tier)
 
@@ -199,7 +200,7 @@ See [QUICKSTART.md](QUICKSTART.md) for complete setup instructions.
 ```bash
 # Backend
 cd backend
-source venv/bin/activate
+conda activate spacerep
 uvicorn app.main:app --reload
 
 # Frontend (separate terminal)
