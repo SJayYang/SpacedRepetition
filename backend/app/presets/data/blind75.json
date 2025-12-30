@@ -1,0 +1,106 @@
+{
+  "name": "Blind 75",
+  "description": "75 essential LeetCode problems for interview prep",
+  "problems": [
+    {
+      "external_id": "1",
+      "title": "Two Sum",
+      "external_url": "https://leetcode.com/problems/two-sum/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Array", "Hash Table"],
+        "pattern": "Hash Map Lookup"
+      }
+    },
+    {
+      "external_id": "121",
+      "title": "Best Time to Buy and Sell Stock",
+      "external_url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Array", "Dynamic Programming"],
+        "pattern": "Sliding Window"
+      }
+    },
+    {
+      "external_id": "217",
+      "title": "Contains Duplicate",
+      "external_url": "https://leetcode.com/problems/contains-duplicate/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Array", "Hash Table"],
+        "pattern": "Hash Set"
+      }
+    },
+    {
+      "external_id": "238",
+      "title": "Product of Array Except Self",
+      "external_url": "https://leetcode.com/problems/product-of-array-except-self/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Prefix Sum"],
+        "pattern": "Prefix/Suffix Products"
+      }
+    },
+    {
+      "external_id": "53",
+      "title": "Maximum Subarray",
+      "external_url": "https://leetcode.com/problems/maximum-subarray/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Dynamic Programming"],
+        "pattern": "Kadane's Algorithm"
+      }
+    },
+    {
+      "external_id": "152",
+      "title": "Maximum Product Subarray",
+      "external_url": "https://leetcode.com/problems/maximum-product-subarray/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Dynamic Programming"],
+        "pattern": "Dynamic Programming"
+      }
+    },
+    {
+      "external_id": "153",
+      "title": "Find Minimum in Rotated Sorted Array",
+      "external_url": "https://leetcode.com/problems/find-minimum-in-rotated-sorted-array/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Binary Search"],
+        "pattern": "Binary Search"
+      }
+    },
+    {
+      "external_id": "33",
+      "title": "Search in Rotated Sorted Array",
+      "external_url": "https://leetcode.com/problems/search-in-rotated-sorted-array/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Binary Search"],
+        "pattern": "Modified Binary Search"
+      }
+    },
+    {
+      "external_id": "15",
+      "title": "3Sum",
+      "external_url": "https://leetcode.com/problems/3sum/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Two Pointers"],
+        "pattern": "Two Pointers"
+      }
+    },
+    {
+      "external_id": "11",
+      "title": "Container With Most Water",
+      "external_url": "https://leetcode.com/problems/container-with-most-water/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Two Pointers"],
+        "pattern": "Two Pointers"
+      }
+    }
+  ]
+}

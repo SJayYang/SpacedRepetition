@@ -1,0 +1,56 @@
+{
+  "name": "NeetCode 150",
+  "description": "Curated list of 150 LeetCode problems covering all patterns",
+  "problems": [
+    {
+      "external_id": "1",
+      "title": "Two Sum",
+      "external_url": "https://leetcode.com/problems/two-sum/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Array", "Hash Table"],
+        "pattern": "Hash Map"
+      }
+    },
+    {
+      "external_id": "49",
+      "title": "Group Anagrams",
+      "external_url": "https://leetcode.com/problems/group-anagrams/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Hash Table", "String"],
+        "pattern": "Hash Map Grouping"
+      }
+    },
+    {
+      "external_id": "347",
+      "title": "Top K Frequent Elements",
+      "external_url": "https://leetcode.com/problems/top-k-frequent-elements/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Hash Table", "Heap"],
+        "pattern": "Bucket Sort"
+      }
+    },
+    {
+      "external_id": "271",
+      "title": "Encode and Decode Strings",
+      "external_url": "https://leetcode.com/problems/encode-and-decode-strings/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["String", "Design"],
+        "pattern": "String Encoding"
+      }
+    },
+    {
+      "external_id": "128",
+      "title": "Longest Consecutive Sequence",
+      "external_url": "https://leetcode.com/problems/longest-consecutive-sequence/",
+      "metadata": {
+        "difficulty": "Medium",
+        "topics": ["Array", "Hash Table", "Union Find"],
+        "pattern": "Hash Set"
+      }
+    }
+  ]
+}

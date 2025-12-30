@@ -1,0 +1,66 @@
+{
+  "name": "Grind 75",
+  "description": "Grind 75 - Essential coding interview problems",
+  "problems": [
+    {
+      "external_id": "1",
+      "title": "Two Sum",
+      "external_url": "https://leetcode.com/problems/two-sum/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Array", "Hash Table"],
+        "pattern": "Hash Map"
+      }
+    },
+    {
+      "external_id": "20",
+      "title": "Valid Parentheses",
+      "external_url": "https://leetcode.com/problems/valid-parentheses/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["String", "Stack"],
+        "pattern": "Stack"
+      }
+    },
+    {
+      "external_id": "21",
+      "title": "Merge Two Sorted Lists",
+      "external_url": "https://leetcode.com/problems/merge-two-sorted-lists/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Linked List", "Recursion"],
+        "pattern": "Two Pointers"
+      }
+    },
+    {
+      "external_id": "121",
+      "title": "Best Time to Buy and Sell Stock",
+      "external_url": "https://leetcode.com/problems/best-time-to-buy-and-sell-stock/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Array", "Dynamic Programming"],
+        "pattern": "Sliding Window"
+      }
+    },
+    {
+      "external_id": "125",
+      "title": "Valid Palindrome",
+      "external_url": "https://leetcode.com/problems/valid-palindrome/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["String", "Two Pointers"],
+        "pattern": "Two Pointers"
+      }
+    },
+    {
+      "external_id": "226",
+      "title": "Invert Binary Tree",
+      "external_url": "https://leetcode.com/problems/invert-binary-tree/",
+      "metadata": {
+        "difficulty": "Easy",
+        "topics": ["Tree", "Depth-First Search", "Breadth-First Search"],
+        "pattern": "Tree DFS"
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p backend/app/{auth,collections,items,reviews,analytics,presets/data})",
+      "Bash(mkdir -p frontend/src/{api,components,pages,hooks,types,lib})",
+      "Bash(touch backend/app/__init__.py backend/app/auth/__init__.py backend/app/collections/__init__.py backend/app/items/__init__.py backend/app/reviews/__init__.py backend/app/analytics/__init__.py backend/app/presets/__init__.py)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
