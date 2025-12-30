@@ -1,0 +1,166 @@
+// Prisma schema for SpaceRep
+// This schema will be pushed to Supabase PostgreSQL
+
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User profiles (extends Supabase auth.users)
+model Profile {
+  id        String   @id @db.Uuid
+  email     String?
+  displayName String? @map("display_name")
+  avatarUrl String?  @map("avatar_url")
+
+  // Settings
+  timezone           String  @default("UTC")
+  dailyReviewLimit   Int     @default(100) @map("daily_review_limit")
+  newItemsPerDay     Int     @default(20) @map("new_items_per_day")
+  defaultEaseFactor  Decimal @default(2.5) @map("default_ease_factor") @db.Decimal(4, 2)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  collections      Collection[]
+  items            Item[]
+  tags             Tag[]
+  schedulingStates SchedulingState[]
+  reviews          Review[]
+
+  @@map("profiles")
+}
+
+// Collections for organizing items
+model Collection {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  name        String
+  description String?
+  itemType    String   @default("leetcode") @map("item_type")
+  isDefault   Boolean  @default(false) @map("is_default")
+  config      Json     @default("{}")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user  Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items Item[]
+  tags  Tag[]
+
+  @@unique([userId, name])
+  @@map("collections")
+}
+
+// Items (LeetCode problems or other reviewable content)
+model Item {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  collectionId String    @map("collection_id") @db.Uuid
+  title        String
+  externalId   String?   @map("external_id")
+  externalUrl  String?   @map("external_url")
+  metadata     Json      @default("{}")
+  notes        String?
+
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  archivedAt DateTime? @map("archived_at") @db.Timestamptz(6)
+
+  user             Profile          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collection       Collection       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  schedulingStates SchedulingState[]
+  reviews          Review[]
+  tags             ItemTag[]
+
+  @@unique([userId, collectionId, externalId])
+  @@index([userId, collectionId])
+  @@index([userId], name: "idx_items_archived", map: "idx_items_archived")
+  @@map("items")
+}
+
+// Tags for categorizing items
+model Tag {
+  id           String  @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId       String  @map("user_id") @db.Uuid
+  collectionId String? @map("collection_id") @db.Uuid
+  name         String
+  color        String  @default("#6B7280")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user       Profile     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collection Collection? @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  items      ItemTag[]
+
+  @@unique([userId, collectionId, name])
+  @@map("tags")
+}
+
+// Item-Tag junction table
+model ItemTag {
+  itemId String @map("item_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+
+  item Item @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([itemId, tagId])
+  @@map("item_tags")
+}
+
+// Scheduling state for spaced repetition
+model SchedulingState {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  itemId       String    @map("item_id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+
+  // SM-2 algorithm state
+  easeFactor   Decimal   @default(2.5) @map("ease_factor") @db.Decimal(4, 2)
+  intervalDays Int       @default(0) @map("interval_days")
+  repetitions  Int       @default(0)
+
+  // Status and scheduling
+  status        String    @default("new") // 'new' | 'learning' | 'review'
+  nextReviewAt  DateTime  @default(now()) @map("next_review_at") @db.Timestamptz(6)
+  lastReviewAt  DateTime? @map("last_review_at") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  item Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, userId])
+  @@index([userId, nextReviewAt], name: "idx_scheduling_due")
+  @@index([userId, status], name: "idx_scheduling_status")
+  @@map("scheduling_states")
+}
+
+// Review history
+model Review {
+  id     String @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  itemId String @map("item_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  rating Int    // 1-4 rating scale
+
+  // Snapshot for analytics
+  easeFactorBefore Decimal? @map("ease_factor_before") @db.Decimal(4, 2)
+  intervalBefore   Int?     @map("interval_before")
+  easeFactorAfter  Decimal? @map("ease_factor_after") @db.Decimal(4, 2)
+  intervalAfter    Int?     @map("interval_after")
+
+  reviewedAt DateTime @default(now()) @map("reviewed_at") @db.Timestamptz(6)
+
+  item Item    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  user Profile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, reviewedAt], name: "idx_reviews_user_date")
+  @@map("reviews")
+}

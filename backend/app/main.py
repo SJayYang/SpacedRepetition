@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,11 +8,23 @@ from app.items.router import router as items_router
 from app.reviews.router import router as reviews_router
 from app.analytics.router import router as analytics_router
 from app.presets.router import router as presets_router
+from app.database import connect_db, disconnect_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Connect to database
+    await connect_db()
+    yield
+    # Shutdown: Disconnect from database
+    await disconnect_db()
+
 
 app = FastAPI(
     title="SpaceRep API",
     description="Spaced repetition scheduling for LeetCode and more",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS for local development
