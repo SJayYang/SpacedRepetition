@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { collectionsAPI, presetsAPI } from '../api/client'
 import { Collection, Preset } from '../types'
 
 export default function Collections() {
+  const navigate = useNavigate()
   const [collections, setCollections] = useState<Collection[]>([])
   const [presets, setPresets] = useState<Preset[]>([])
   const [loading, setLoading] = useState(true)
@@ -121,15 +123,31 @@ export default function Collections() {
       {/* Collections List */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {collections.map((collection) => (
-          <div key={collection.id} className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {collection.name}
-            </h3>
+          <div
+            key={collection.id}
+            onClick={() => navigate(`/collections/${collection.id}`)}
+            className="bg-white shadow rounded-lg p-6 cursor-pointer hover:shadow-xl transition-shadow border border-gray-200 hover:border-primary-300"
+          >
+            <div className="flex items-start justify-between mb-2">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {collection.name}
+              </h3>
+              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
             {collection.description && (
               <p className="text-gray-600 text-sm mb-4">{collection.description}</p>
             )}
-            <div className="text-sm text-gray-500">
-              Type: {collection.item_type}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Type: {collection.item_type}
+              </div>
+              {collection.is_default && (
+                <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
+                  Default
+                </span>
+              )}
             </div>
           </div>
         ))}

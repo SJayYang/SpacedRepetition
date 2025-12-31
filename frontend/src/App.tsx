@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import ReviewSession from './pages/ReviewSession'
 import Collections from './pages/Collections'
+import CollectionDetail from './pages/CollectionDetail'
 import Items from './pages/Items'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
@@ -49,6 +50,7 @@ function App() {
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="review" element={<ReviewSession />} />
           <Route path="collections" element={<Collections />} />
+          <Route path="collections/:id" element={<CollectionDetail />} />
           <Route path="items" element={<Items />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="settings" element={<Settings />} />

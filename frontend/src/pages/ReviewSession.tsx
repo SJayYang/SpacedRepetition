@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { reviewsAPI } from '../api/client'
+import Badge from '../components/common/Badge'
+import Button from '../components/common/Button'
+import Card from '../components/common/Card'
+import { getDifficultyVariant } from '../utils/badgeHelpers'
 
 interface DueItem {
   id: string
@@ -22,6 +26,7 @@ export default function ReviewSession() {
   const [submitting, setSubmitting] = useState(false)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [reviewsCompleted, setReviewsCompleted] = useState(0)
+  const [showPattern, setShowPattern] = useState(false)
 
   useEffect(() => {
     loadDueItems()
@@ -55,6 +60,9 @@ export default function ReviewSession() {
 
       setReviewsCompleted(prev => prev + 1)
 
+      // Reset pattern visibility for next item
+      setShowPattern(false)
+
       // Move to next item or complete session
       if (currentIndex < dueItems.length - 1) {
         setCurrentIndex(prev => prev + 1)
@@ -82,7 +90,7 @@ export default function ReviewSession() {
   if (sessionComplete || dueItems.length === 0) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12">
-        <div className="bg-white shadow rounded-lg p-8 text-center">
+        <Card padding="lg" className="text-center">
           <div className="text-6xl mb-4">🎉</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
             {reviewsCompleted > 0 ? 'Session Complete!' : 'No items due for review'}
@@ -96,13 +104,14 @@ export default function ReviewSession() {
               You're all caught up! Check back later for more reviews.
             </p>
           )}
-          <button
+          <Button
             onClick={() => navigate('/dashboard')}
-            className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+            variant="primary"
+            size="lg"
           >
             Return to Dashboard
-          </button>
-        </div>
+          </Button>
+        </Card>
       </div>
     )
   }
@@ -124,19 +133,15 @@ export default function ReviewSession() {
       </div>
 
       {/* Current Item */}
-      <div className="bg-white shadow-lg rounded-lg p-8">
+      <Card padding="lg" className="shadow-lg">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             {currentItem.items.title}
           </h2>
           {currentItem.items.metadata?.difficulty && (
-            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
-              currentItem.items.metadata.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-              currentItem.items.metadata.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-red-100 text-red-800'
-            }`}>
+            <Badge variant={getDifficultyVariant(currentItem.items.metadata.difficulty)} size="sm">
               {currentItem.items.metadata.difficulty}
-            </span>
+            </Badge>
           )}
         </div>
 
@@ -145,9 +150,9 @@ export default function ReviewSession() {
             <h3 className="text-sm font-medium text-gray-700 mb-2">Topics:</h3>
             <div className="flex flex-wrap gap-2">
               {currentItem.items.metadata.topics.map((topic: string) => (
-                <span key={topic} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                <Badge key={topic} variant="primary" size="sm">
                   {topic}
-                </span>
+                </Badge>
               ))}
             </div>
           </div>
@@ -155,8 +160,31 @@ export default function ReviewSession() {
 
         {currentItem.items.metadata?.pattern && (
           <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700">Pattern:</h3>
-            <p className="text-gray-900">{currentItem.items.metadata.pattern}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowPattern(!showPattern)}
+              icon={
+                showPattern ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )
+              }
+            >
+              {showPattern ? 'Hide Pattern' : 'Show Pattern (Hint)'}
+            </Button>
+            {showPattern && (
+              <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg mt-2">
+                <h3 className="text-sm font-medium text-purple-900 mb-1">Pattern:</h3>
+                <p className="text-purple-900 font-medium">{currentItem.items.metadata.pattern}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -216,7 +244,7 @@ export default function ReviewSession() {
             />
           </div>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

@@ -1,12 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { itemsAPI, collectionsAPI } from '../api/client'
 import { Item, Collection } from '../types'
+import ItemCard from '../components/items/ItemCard'
+import ItemFilters from '../components/items/ItemFilters'
 
 export default function Items() {
   const [items, setItems] = useState<Item[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
+
+  // Filter states
+  const [selectedCollection, setSelectedCollection] = useState('')
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedDifficulty, setSelectedDifficulty] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+
   const [formData, setFormData] = useState({
     collection_id: '',
     title: '',
@@ -83,6 +92,48 @@ export default function Items() {
     }
   }
 
+  const handleClearFilters = () => {
+    setSelectedCollection('')
+    setSelectedStatus('')
+    setSelectedDifficulty('')
+    setSearchQuery('')
+  }
+
+  // Filter and search items
+  const filteredItems = useMemo(() => {
+    return items.filter(item => {
+      // Collection filter
+      if (selectedCollection && item.collection_id !== selectedCollection) {
+        return false
+      }
+
+      // Status filter
+      if (selectedStatus && item.scheduling_states?.[0]?.status !== selectedStatus) {
+        return false
+      }
+
+      // Difficulty filter
+      if (selectedDifficulty && item.metadata?.difficulty !== selectedDifficulty) {
+        return false
+      }
+
+      // Search filter
+      if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false
+      }
+
+      return true
+    })
+  }, [items, selectedCollection, selectedStatus, selectedDifficulty, searchQuery])
+
+  // Create a map of collection IDs to collection objects for quick lookup
+  const collectionsMap = useMemo(() => {
+    return collections.reduce((acc, collection) => {
+      acc[collection.id] = collection
+      return acc
+    }, {} as Record<string, Collection>)
+  }, [collections])
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
   }
@@ -90,7 +141,12 @@ export default function Items() {
   return (
     <div className="px-4 py-6 sm:px-0">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Items</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Items</h1>
+          <p className="text-gray-600 mt-1">
+            Showing {filteredItems.length} of {items.length} items
+          </p>
+        </div>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -101,7 +157,7 @@ export default function Items() {
 
       {/* Add Form */}
       {showAddForm && (
-        <div className="mb-6 bg-white shadow rounded-lg p-6">
+        <div className="mb-6 bg-white shadow rounded-lg p-6 border border-gray-200">
           <h3 className="text-lg font-semibold mb-4">Add New Problem</h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -214,71 +270,61 @@ export default function Items() {
         </div>
       )}
 
+      {/* Filters */}
+      {items.length > 0 && (
+        <ItemFilters
+          collections={collections}
+          selectedCollection={selectedCollection}
+          selectedStatus={selectedStatus}
+          selectedDifficulty={selectedDifficulty}
+          searchQuery={searchQuery}
+          onCollectionChange={setSelectedCollection}
+          onStatusChange={setSelectedStatus}
+          onDifficultyChange={setSelectedDifficulty}
+          onSearchChange={setSearchQuery}
+          onClearFilters={handleClearFilters}
+        />
+      )}
+
       {/* Items List */}
       <div className="space-y-4">
-        {items.map((item) => (
-          <div key={item.id} className="bg-white shadow rounded-lg p-6">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  {item.title}
-                </h3>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {item.metadata.difficulty && (
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      item.metadata.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                      item.metadata.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {item.metadata.difficulty}
-                    </span>
-                  )}
-                  {item.metadata.topics?.map((topic: string) => (
-                    <span key={topic} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
-                      {topic}
-                    </span>
-                  ))}
-                </div>
-                {item.metadata.pattern && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-medium">Pattern:</span> {item.metadata.pattern}
-                  </p>
-                )}
-                {item.notes && (
-                  <p className="text-sm text-gray-600 mb-2">
-                    <span className="font-medium">Notes:</span> {item.notes}
-                  </p>
-                )}
-                {item.scheduling_states && item.scheduling_states[0] && (
-                  <p className="text-xs text-gray-500 mt-2">
-                    Status: {item.scheduling_states[0].status} |
-                    Next review: {new Date(item.scheduling_states[0].next_review_at).toLocaleDateString()}
-                  </p>
-                )}
-              </div>
-              {item.external_url && (
-                <a
-                  href={item.external_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ml-4 px-4 py-2 text-sm bg-green-600 text-white rounded-md hover:bg-green-700"
-                >
-                  Open
-                </a>
-              )}
-            </div>
-          </div>
+        {filteredItems.map((item) => (
+          <ItemCard
+            key={item.id}
+            item={item}
+            collection={collectionsMap[item.collection_id]}
+            showPattern={false}
+          />
         ))}
       </div>
 
+      {/* Empty States */}
       {items.length === 0 && !showAddForm && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600 mb-4">No items yet. Add your first problem to get started!</p>
+        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p className="text-gray-600 mb-4 mt-4">No items yet. Add your first problem to get started!</p>
           <button
             onClick={() => setShowAddForm(true)}
             className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
           >
             Add Problem
+          </button>
+        </div>
+      )}
+
+      {items.length > 0 && filteredItems.length === 0 && (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p className="text-gray-600 mb-4 mt-4">No items match your filters.</p>
+          <button
+            onClick={handleClearFilters}
+            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            Clear Filters
           </button>
         </div>
       )}
