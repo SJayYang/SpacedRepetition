@@ -1,7 +1,14 @@
+import os
 from prisma import Prisma
 from contextlib import asynccontextmanager
+from .config import settings
+
+# Ensure DATABASE_URL is set in environment for Prisma
+# Prisma reads from env("DATABASE_URL") in schema.prisma
+os.environ["DATABASE_URL"] = settings.database_url
 
 # Global Prisma client instance
+# Prisma will read DATABASE_URL from environment
 db = Prisma()
 
 

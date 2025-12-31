@@ -10,12 +10,13 @@ ENV_FILE = ROOT_DIR / ".env"
 class Settings(BaseSettings):
     database_url: str
     supabase_url: str
-    supabase_key: str
+    supabase_anon_key: str
     supabase_service_key: str
 
     class Config:
         env_file = str(ENV_FILE)
         case_sensitive = False
+        extra = "ignore"  # Ignore extra fields like VITE_* vars
 
 
 settings = Settings()
