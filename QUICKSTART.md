@@ -132,7 +132,7 @@ Go to **SQL Editor** in your Supabase dashboard and run the contents of `backend
 ### 2.5 Start Backend Server
 
 ```bash
-uvicorn app.main:app --reload --port 8000
+python3 -m uvicorn app.main:app --reload --port 8000
 ```
 
 **Verify it's working:**
