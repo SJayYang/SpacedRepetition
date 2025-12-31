@@ -218,14 +218,11 @@ This project uses **Prisma** for schema management:
 # Edit schema
 vi backend/prisma/schema.prisma
 
-# Push to database
-prisma db push --schema=./prisma/schema.prisma
-
-# Regenerate client
-prisma generate --schema=./prisma/schema.prisma
+# Push to database (automatically regenerates client)
+npx prisma db push --schema=./prisma/schema.prisma
 ```
 
-See [PRISMA_SETUP.md](PRISMA_SETUP.md) for advanced usage.
+See [QUICKSTART.md](QUICKSTART.md) for detailed setup and usage.
 
 ## Usage
 

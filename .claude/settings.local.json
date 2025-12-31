@@ -3,7 +3,21 @@
     "allow": [
       "Bash(mkdir -p backend/app/{auth,collections,items,reviews,analytics,presets/data})",
       "Bash(mkdir -p frontend/src/{api,components,pages,hooks,types,lib})",
-      "Bash(touch backend/app/__init__.py backend/app/auth/__init__.py backend/app/collections/__init__.py backend/app/items/__init__.py backend/app/reviews/__init__.py backend/app/analytics/__init__.py backend/app/presets/__init__.py)"
+      "Bash(touch backend/app/__init__.py backend/app/auth/__init__.py backend/app/collections/__init__.py backend/app/items/__init__.py backend/app/reviews/__init__.py backend/app/analytics/__init__.py backend/app/presets/__init__.py)",
+      "Bash(npx prisma db push --schema=./prisma/schema.prisma)",
+      "Bash(cat .env)",
+      "Bash(npx prisma --version)",
+      "WebFetch(domain:prisma-client-py.readthedocs.io)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx prisma@5 db push --schema=./prisma/schema.prisma)",
+      "Bash(npx prisma@5 db push --schema=./prisma/schema.prisma --skip-generate)",
+      "Bash(set -a)",
+      "Bash(source ../.env)",
+      "Bash(set +a)",
+      "Bash(cat ../.env)",
+      "Bash(npx prisma@5 db push --schema=./prisma/schema.prisma --accept-data-loss --skip-generate)",
+      "Bash(python3 -m prisma generate --schema=./prisma/schema.prisma)",
+      "Bash(conda run -n spacerep prisma generate --schema=./prisma/schema.prisma)"
     ],
     "deny": [],
     "ask": []

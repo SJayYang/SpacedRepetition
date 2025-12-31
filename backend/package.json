@@ -1,0 +1,15 @@
+{
+  "name": "spacerep-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Prisma CLI for SpaceRep backend",
+  "scripts": {
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "db:migrate": "prisma migrate dev"
+  },
+  "devDependencies": {
+    "prisma": "5.22.0"
+  }
+}

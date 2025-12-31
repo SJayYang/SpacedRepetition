@@ -68,54 +68,50 @@ pip3 install -r requirements.txt
 
 ### 2.2 Configure Environment
 
-**Navigate to project root and create .env file:**
+**Create backend .env file:**
 
 ```bash
-cd ..  # Go back to project root
+cd backend
 cp .env.example .env
 ```
 
-Edit `.env` in the project root with your Supabase credentials:
+Edit `backend/.env` with your Supabase credentials:
 
 ```env
-# Database connection
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.xxxxx.supabase.co:5432/postgres
+# Database connection (pooled - for queries)
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@aws-0-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true&statement_cache_size=0
+
+# Direct connection (for migrations - port 5432)
+DIRECT_URL=postgresql://postgres:YOUR_PASSWORD@aws-0-us-west-2.pooler.supabase.com:5432/postgres
 
 # Supabase API credentials
 SUPABASE_URL=https://xxxxx.supabase.co
 SUPABASE_ANON_KEY=eyJhbGc...
 SUPABASE_SERVICE_KEY=eyJhbGc...
-
-# Frontend environment variables (required by Vite)
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGc...
-VITE_API_URL=http://localhost:8000
 ```
 
 **Important:**
-- Replace placeholders with actual values from Step 1.1
-- This single .env file is used by both backend and frontend
-- VITE_ prefixed vars are for the frontend (Vite requirement)
+- Replace `YOUR_PASSWORD` with your actual database password (URL-encoded if it contains special characters)
+- Replace `xxxxx` with your Supabase project reference
+- The pooled connection (port 6543) is used for queries
+- The direct connection (port 5432) is used for migrations and schema changes
 
 ### 2.3 Set Up Database
 
-**Option A: Automated Setup (Recommended)**
+**Push the Prisma schema to your database:**
 
 ```bash
-# Run the setup script
-chmod +x setup_db.sh
-./setup_db.sh
+cd backend
+npm install  # Install Prisma CLI 5.22.0 (defined in package.json)
+npx prisma db push
 ```
 
-**Option B: Manual Setup**
+This command will:
+- Create all database tables
+- Set up indexes and constraints
+- Generate the Prisma Python client automatically
 
-```bash
-# Generate Prisma client
-prisma generate --schema=./prisma/schema.prisma
-
-# Push schema to Supabase database
-prisma db push --schema=./prisma/schema.prisma
-```
+**Note:** The `backend/package.json` locks Prisma to version 5.22.0 for compatibility with prisma-client-py. The schema uses `DIRECT_URL` from your `.env` file to connect directly to the database (bypassing the connection pooler which doesn't support migrations).
 
 ### 2.4 Configure Supabase Features
 
@@ -147,18 +143,37 @@ uvicorn app.main:app --reload --port 8000
 
 ## Step 3: Frontend Setup
 
-### 3.1 Install Dependencies
+### 3.1 Configure Environment
+
+**Create frontend .env file:**
 
 ```bash
 cd frontend  # From project root
+cp .env.example .env
+```
 
+Edit `frontend/.env` with your Supabase credentials:
+
+```env
+# Frontend environment variables (must be prefixed with VITE_)
+VITE_SUPABASE_URL=https://xxxxx.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGc...
+VITE_API_URL=http://localhost:8000
+```
+
+**Important:**
+- Replace `xxxxx` with your Supabase project reference
+- All frontend environment variables MUST be prefixed with `VITE_`
+- Use the same values from Step 1.1
+
+### 3.2 Install Dependencies
+
+```bash
 # Install npm packages
 npm install
 ```
 
-### 3.2 Start Frontend Server
-
-**Note:** Frontend uses the root `.env` file automatically (Vite reads VITE_ prefixed variables)
+### 3.3 Start Frontend Server
 
 ```bash
 npm run dev
@@ -226,9 +241,16 @@ npm run dev
 **Error:** `Environment variable not found: DATABASE_URL`
 
 **Solution:**
-- Ensure `.env` exists in the **project root** (not backend/ or frontend/)
+- Ensure `.env` exists in the `backend/` directory (created from `backend/.env.example`)
 - Check there are no typos in the variable names
-- Verify all required variables are present (see `.env.example`)
+- Verify all required variables are present (see `backend/.env.example`)
+
+**Error:** Frontend can't connect to Supabase
+
+**Solution:**
+- Ensure `.env` exists in the `frontend/` directory (created from `frontend/.env.example`)
+- Verify all variables are prefixed with `VITE_`
+- Restart the Vite dev server after changing `.env` files
 
 ### Database Connection Errors
 
@@ -242,13 +264,34 @@ npm run dev
 
 ### Prisma Client Not Generated
 
-**Error:** `Cannot find module '@prisma/client'`
+**Error:** `Cannot find module 'prisma'` or Prisma client errors
 
 **Solution:**
 ```bash
 cd backend
-prisma generate --schema=./prisma/schema.prisma
+npm install  # Installs Prisma CLI 5.22.0
+npx prisma generate
 ```
+
+This will regenerate the Prisma Python client.
+
+### Prisma Version Errors
+
+**Error:** `The datasource property 'url' is no longer supported in schema files` (Error code: P1012)
+
+**Solution:**
+- This error occurs when using Prisma 7 instead of Prisma 5
+- The `backend/package.json` locks Prisma to version 5.22.0
+- Run `npm install` in the backend directory to install the correct version
+- The Python client (prisma-client-py 0.11.0) is only compatible with Prisma CLI 5.x
+
+**Error:** `npx prisma db push` hangs indefinitely or times out
+
+**Solution:**
+- Ensure you have both `DATABASE_URL` and `DIRECT_URL` in your `backend/.env` file
+- The `DIRECT_URL` should use port **5432** (direct connection), not 6543 (pooled)
+- The schema automatically uses `DIRECT_URL` for migrations
+- Verify your `.env` file matches `backend/.env.example`
 
 ### Google OAuth Errors
 
@@ -317,15 +360,17 @@ uvicorn app.main:app --reload
 # View API documentation
 open http://localhost:8000/docs
 
-# Open Prisma Studio (visual database browser)
-prisma studio --schema=./prisma/schema.prisma
-
 # Update database schema after editing prisma/schema.prisma
-prisma db push --schema=./prisma/schema.prisma
-prisma generate --schema=./prisma/schema.prisma
+npx prisma db push
+
+# Open Prisma Studio (visual database browser)
+npx prisma studio
 
 # Format Prisma schema file
-prisma format --schema=./prisma/schema.prisma
+npx prisma format
+
+# Regenerate Prisma client
+npx prisma generate
 ```
 
 ### Frontend Commands
@@ -350,11 +395,14 @@ npm run type-check  # if configured
 
 ```
 SpacedRepetition/
-├── .env                       # ⭐ Single config for entire project
-├── .env.example               # Template with all required variables
+├── .env.example               # Template - shows structure only
 ├── .gitignore                 # Git ignore rules
 │
 ├── backend/
+│   ├── .env                   # ⭐ Backend configuration
+│   ├── .env.example           # Backend template
+│   ├── package.json           # Prisma CLI 5.22.0
+│   │
 │   ├── app/
 │   │   ├── auth/              # Authentication endpoints
 │   │   ├── collections/       # Collection management
@@ -364,7 +412,7 @@ SpacedRepetition/
 │   │   ├── presets/           # Preset list import
 │   │   │   └── data/          # JSON preset files
 │   │   ├── main.py            # FastAPI app entry point
-│   │   ├── config.py          # Reads from root .env
+│   │   ├── config.py          # Reads from backend/.env
 │   │   ├── dependencies.py    # Auth middleware
 │   │   └── database.py        # Prisma client manager
 │   │
@@ -372,10 +420,12 @@ SpacedRepetition/
 │   │   └── schema.prisma      # Database schema definition
 │   │
 │   ├── supabase_setup.sql     # RLS policies & triggers
-│   ├── setup_db.sh            # Automated database setup
 │   └── requirements.txt       # Python dependencies
 │
 └── frontend/
+    ├── .env                   # ⭐ Frontend configuration
+    ├── .env.example           # Frontend template
+    │
     ├── src/
     │   ├── api/               # API client functions
     │   ├── components/        # Reusable UI components
@@ -386,7 +436,7 @@ SpacedRepetition/
     │   └── main.tsx           # Entry point
     │
     ├── package.json           # Node dependencies
-    ├── vite.config.ts         # Vite config (auto-loads root .env)
+    ├── vite.config.ts         # Vite config (reads frontend/.env)
     └── tailwind.config.js     # Tailwind config
 ```
 
@@ -402,29 +452,37 @@ This project uses **Prisma** for type-safe database management. Here's what you 
 2. Push changes to database:
    ```bash
    cd backend
-   prisma db push --schema=./prisma/schema.prisma
+   npx prisma db push
    ```
-3. Regenerate client:
-   ```bash
-   prisma generate --schema=./prisma/schema.prisma
-   ```
-4. Restart your backend server
+3. Restart your backend server
+
+**Note:** The `backend/package.json` locks Prisma to version 5.22.0 for compatibility. Running `npm install` in the backend directory ensures you're using the correct version.
+
+**Note:** `npx prisma db push` automatically regenerates the Prisma Python client, so no separate generate step is needed.
 
 ### Useful Prisma Commands
 
+All commands should be run from the `backend/` directory:
+
 ```bash
+# Push schema changes to database
+npx prisma db push
+
 # Visual database browser
-prisma studio --schema=./prisma/schema.prisma
+npx prisma studio
 
 # Validate schema file
-prisma validate --schema=./prisma/schema.prisma
+npx prisma validate
 
 # Format schema file
-prisma format --schema=./prisma/schema.prisma
+npx prisma format
+
+# Regenerate Prisma client
+npx prisma generate
 
 # For production: create migration files
-prisma migrate dev --name your_migration_name --schema=./prisma/schema.prisma
-prisma migrate deploy --schema=./prisma/schema.prisma  # Deploy to prod
+npx prisma migrate dev --name your_migration_name
+npx prisma migrate deploy  # Deploy to prod
 ```
 
 ### Why Prisma?
@@ -448,7 +506,7 @@ prisma migrate deploy --schema=./prisma/schema.prisma  # Deploy to prod
 
 For production deployment:
 
-1. **Database:** Use `prisma migrate` instead of `prisma db push` for migration history
+1. **Database:** Use `npx prisma migrate` instead of `npx prisma db push` for migration history
 2. **Environment:** Set production environment variables
 3. **CORS:** Update allowed origins in `backend/app/main.py`
 4. **Build:** Run `npm run build` in frontend and serve `dist/` folder
