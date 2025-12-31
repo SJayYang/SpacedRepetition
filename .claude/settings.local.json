@@ -17,7 +17,9 @@
       "Bash(cat ../.env)",
       "Bash(npx prisma@5 db push --schema=./prisma/schema.prisma --accept-data-loss --skip-generate)",
       "Bash(python3 -m prisma generate --schema=./prisma/schema.prisma)",
-      "Bash(conda run -n spacerep prisma generate --schema=./prisma/schema.prisma)"
+      "Bash(conda run -n spacerep prisma generate --schema=./prisma/schema.prisma)",
+      "Bash(python3 -c \"import json; print(json.dumps(json.load(open(''''app/presets/data/blind75.json'''')), indent=2))\")",
+      "Bash(python -m py_compile app/presets/router.py)"
     ],
     "deny": [],
     "ask": []

@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.dependencies import get_current_user, get_authenticated_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase, ensure_profile_exists
 from app.items.schemas import ItemCreate, ItemUpdate, ItemBulkCreate, ItemResponse
 
 router = APIRouter()
@@ -38,7 +38,8 @@ async def list_items(
 async def create_item(
     item: ItemCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase=Depends(get_authenticated_supabase),
+    _: None = Depends(ensure_profile_exists)
 ):
     """Create a new item."""
     # Create item
@@ -69,7 +70,8 @@ async def create_item(
 async def bulk_create_items(
     bulk_items: ItemBulkCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase=Depends(get_authenticated_supabase),
+    _: None = Depends(ensure_profile_exists)
 ):
     """Bulk import items."""
     items_to_insert = []

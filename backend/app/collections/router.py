@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.dependencies import get_current_user, get_authenticated_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase, ensure_profile_exists
 from app.collections.schemas import CollectionCreate, CollectionUpdate, CollectionResponse
 
 router = APIRouter()
@@ -28,7 +28,8 @@ async def list_collections(
 async def create_collection(
     collection: CollectionCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase=Depends(get_authenticated_supabase),
+    _: None = Depends(ensure_profile_exists)
 ):
     """Create a new collection."""
     response = supabase.table("collections").insert({

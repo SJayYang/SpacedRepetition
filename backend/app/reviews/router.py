@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Query
 
-from app.dependencies import get_current_user, get_authenticated_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase, ensure_profile_exists
 from app.reviews.scheduler import scheduler, SchedulingState
 from app.reviews.schemas import ReviewCreate, ReviewResponse
 
@@ -38,7 +38,8 @@ async def get_due_items(
 async def submit_review(
     review: ReviewCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase=Depends(get_authenticated_supabase),
+    _: None = Depends(ensure_profile_exists)
 ):
     """Submit a review rating and update scheduling."""
 
