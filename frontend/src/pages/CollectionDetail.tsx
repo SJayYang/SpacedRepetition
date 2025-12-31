@@ -8,6 +8,9 @@ import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import StatDisplay from '../components/common/StatDisplay'
 import EmptyState from '../components/common/EmptyState'
+import ConfirmDialog from '../components/common/ConfirmDialog'
+import EditDialog from '../components/common/EditDialog'
+import IconMenu from '../components/common/IconMenu'
 
 export default function CollectionDetail() {
   const { id } = useParams<{ id: string }>()
@@ -15,6 +18,9 @@ export default function CollectionDetail() {
   const [collection, setCollection] = useState<Collection | null>(null)
   const [items, setItems] = useState<Item[]>([])
   const [loading, setLoading] = useState(true)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showRenameDialog, setShowRenameDialog] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -27,7 +33,7 @@ export default function CollectionDetail() {
       setLoading(true)
       const [collectionData, itemsData] = await Promise.all([
         collectionsAPI.get(id),
-        itemsAPI.list({ collection_id: id }),
+        itemsAPI.list({ collection_id: id, limit: 500 }),
       ])
       setCollection(collectionData)
       setItems(itemsData)
@@ -36,6 +42,43 @@ export default function CollectionDetail() {
       navigate('/collections')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleRename = async (newName: string) => {
+    if (!id || !collection) return
+
+    try {
+      await collectionsAPI.update(id, { name: newName })
+      setCollection({ ...collection, name: newName })
+      setShowRenameDialog(false)
+    } catch (err) {
+      console.error('Error renaming collection:', err)
+      alert('Failed to rename collection')
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!id) return
+
+    try {
+      setDeleting(true)
+      await collectionsAPI.delete(id)
+      navigate('/collections')
+    } catch (err) {
+      console.error('Error deleting collection:', err)
+      alert('Failed to delete collection')
+      setDeleting(false)
+    }
+  }
+
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      await itemsAPI.delete(itemId)
+      setItems(items.filter(item => item.id !== itemId))
+    } catch (err) {
+      console.error('Error deleting item:', err)
+      alert('Failed to delete item')
     }
   }
 
@@ -89,7 +132,33 @@ export default function CollectionDetail() {
         <Card>
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{collection.name}</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="text-3xl font-bold text-gray-900">{collection.name}</h1>
+                <IconMenu
+                  ariaLabel="Collection actions"
+                  items={[
+                    {
+                      label: 'Rename Collection',
+                      icon: (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      ),
+                      onClick: () => setShowRenameDialog(true),
+                    },
+                    {
+                      label: 'Delete Collection',
+                      icon: (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      ),
+                      onClick: () => setShowDeleteDialog(true),
+                      variant: 'danger',
+                    },
+                  ]}
+                />
+              </div>
               {collection.description && (
                 <p className="text-gray-600 mb-4">{collection.description}</p>
               )}
@@ -114,10 +183,23 @@ export default function CollectionDetail() {
       </div>
 
       {/* Items */}
-      <div className="mb-4">
+      <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">
           Problems <span className="text-gray-500">({items.length})</span>
         </h2>
+        {stats.total > 0 && (stats.new > 0 || stats.learning > 0 || stats.review > 0) && (
+          <Button
+            variant="success"
+            onClick={() => navigate(`/review?collection=${id}`)}
+            icon={
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
+          >
+            Start Review Session
+          </Button>
+        )}
       </div>
 
       {items.length > 0 ? (
@@ -128,6 +210,9 @@ export default function CollectionDetail() {
               item={item}
               collection={collection}
               showPattern={false}
+              onDelete={() => handleDeleteItem(item.id)}
+              allowManualRating={true}
+              onRated={loadData}
             />
           ))}
         </div>
@@ -139,6 +224,28 @@ export default function CollectionDetail() {
           variant="dashed"
         />
       )}
+
+      {/* Rename Dialog */}
+      <EditDialog
+        isOpen={showRenameDialog}
+        title="Rename Collection"
+        label="Collection Name"
+        initialValue={collection?.name || ''}
+        placeholder="Enter new collection name"
+        onSave={handleRename}
+        onCancel={() => setShowRenameDialog(false)}
+      />
+
+      {/* Delete Confirmation */}
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        title="Delete Collection?"
+        message={`Are you sure you want to delete "${collection?.name}"? This will delete all ${items.length} items in this collection. This action cannot be undone.`}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete Collection'}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteDialog(false)}
+        variant="danger"
+      />
     </div>
   )
 }

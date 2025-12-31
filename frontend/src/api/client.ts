@@ -41,7 +41,7 @@ export const collectionsAPI = {
 
 // Items API
 export const itemsAPI = {
-  list: (params?: { collection_id?: string; archived?: boolean }) => {
+  list: (params?: { collection_id?: string; archived?: boolean; limit?: number }) => {
     const query = new URLSearchParams(params as any).toString()
     return apiClient(`/api/items${query ? '?' + query : ''}`)
   },

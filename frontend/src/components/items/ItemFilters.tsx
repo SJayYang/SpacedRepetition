@@ -6,10 +6,12 @@ interface ItemFiltersProps {
   selectedStatus: string
   selectedDifficulty: string
   searchQuery: string
+  sortBy: string
   onCollectionChange: (value: string) => void
   onStatusChange: (value: string) => void
   onDifficultyChange: (value: string) => void
   onSearchChange: (value: string) => void
+  onSortChange: (value: string) => void
   onClearFilters: () => void
 }
 
@@ -19,10 +21,12 @@ export default function ItemFilters({
   selectedStatus,
   selectedDifficulty,
   searchQuery,
+  sortBy,
   onCollectionChange,
   onStatusChange,
   onDifficultyChange,
   onSearchChange,
+  onSortChange,
   onClearFilters,
 }: ItemFiltersProps) {
   const hasActiveFilters = selectedCollection || selectedStatus || selectedDifficulty || searchQuery
@@ -41,7 +45,7 @@ export default function ItemFilters({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Search */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -106,6 +110,25 @@ export default function ItemFilters({
             <option value="Easy">Easy</option>
             <option value="Medium">Medium</option>
             <option value="Hard">Hard</option>
+          </select>
+        </div>
+
+        {/* Sort By */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Sort By
+          </label>
+          <select
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+          >
+            <option value="created_desc">Newest First</option>
+            <option value="created_asc">Oldest First</option>
+            <option value="review_asc">Next Review (Soonest)</option>
+            <option value="review_desc">Next Review (Latest)</option>
+            <option value="title_asc">Title (A-Z)</option>
+            <option value="title_desc">Title (Z-A)</option>
           </select>
         </div>
       </div>

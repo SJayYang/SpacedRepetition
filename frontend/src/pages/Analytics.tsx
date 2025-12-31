@@ -4,7 +4,6 @@ import { analyticsAPI } from '../api/client'
 export default function Analytics() {
   const [retention, setRetention] = useState<any[]>([])
   const [topics, setTopics] = useState<any[]>([])
-  const [forecast, setForecast] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -14,10 +13,9 @@ export default function Analytics() {
   const loadAnalytics = async () => {
     try {
       setLoading(true)
-      const [retentionData, topicsData, forecastData] = await Promise.all([
+      const [retentionData, topicsData] = await Promise.all([
         analyticsAPI.getRetention(30),
         analyticsAPI.getTopics(),
-        analyticsAPI.getSummary().then(() => []), // Simplified
       ])
       setRetention(retentionData)
       setTopics(topicsData)

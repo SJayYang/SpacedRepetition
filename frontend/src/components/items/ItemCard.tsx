@@ -4,27 +4,67 @@ import ReviewDateDisplay from '../common/ReviewDateDisplay'
 import Badge from '../common/Badge'
 import Button from '../common/Button'
 import Card from '../common/Card'
-import { getDifficultyVariant, getStatusVariant, getStatusLabel } from '../../utils/badgeHelpers'
+import IconMenu from '../common/IconMenu'
+import ConfirmDialog from '../common/ConfirmDialog'
+import RatingSelector from './RatingSelector'
+import { reviewsAPI } from '../../api/client'
+import { getDifficultyVariant, getStatusVariant, getStatusLabel, getRatingLabel, getRatingVariant } from '../../utils/badgeHelpers'
 
 interface ItemCardProps {
   item: Item
   collection?: Collection
   showPattern?: boolean
   onOpen?: () => void
+  onDelete?: () => void
+  onRated?: () => void
+  allowManualRating?: boolean
 }
 
-export default function ItemCard({ item, collection, showPattern = false, onOpen }: ItemCardProps) {
+export default function ItemCard({ item, collection, showPattern = false, onOpen, onDelete, onRated, allowManualRating = false }: ItemCardProps) {
   const [patternVisible, setPatternVisible] = useState(showPattern)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const schedulingState = item.scheduling_states?.[0]
 
+  const handleRate = async (rating: 1 | 2 | 3 | 4) => {
+    try {
+      await reviewsAPI.submit({ item_id: item.id, rating })
+      if (onRated) {
+        onRated()
+      }
+    } catch (err) {
+      console.error('Error submitting rating:', err)
+      alert('Failed to submit rating')
+    }
+  }
+
   return (
-    <Card hoverable>
-      {/* Header: Title, Difficulty, Status */}
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            {item.title}
-          </h3>
+    <>
+      <Card hoverable>
+        {/* Header: Title, Difficulty, Status */}
+        <div className="flex items-start justify-between gap-4 mb-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {item.title}
+              </h3>
+              {onDelete && (
+                <IconMenu
+                  ariaLabel="Item actions"
+                  items={[
+                    {
+                      label: 'Delete Item',
+                      icon: (
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      ),
+                      onClick: () => setShowDeleteConfirm(true),
+                      variant: 'danger',
+                    },
+                  ]}
+                />
+              )}
+            </div>
           <div className="flex flex-wrap gap-2 items-center">
             {item.metadata?.difficulty && (
               <Badge variant={getDifficultyVariant(item.metadata.difficulty)} size="sm">
@@ -34,6 +74,11 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
             {schedulingState && (
               <Badge variant={getStatusVariant(schedulingState.status)} size="sm" withBorder>
                 {getStatusLabel(schedulingState.status)}
+              </Badge>
+            )}
+            {item.recent_review && (
+              <Badge variant={getRatingVariant(item.recent_review.rating)} size="sm" withBorder>
+                Last: {getRatingLabel(item.recent_review.rating)}
               </Badge>
             )}
             {collection && (
@@ -112,30 +157,57 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
       )}
 
       {/* Actions */}
-      <div className="flex gap-2 mt-4">
-        {item.external_url && (
-          <Button
-            as="a"
-            href={item.external_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="primary"
-            size="sm"
-            icon={
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            }
-          >
-            Open Problem
-          </Button>
-        )}
-        {onOpen && (
-          <Button variant="secondary" size="sm" onClick={onOpen}>
-            View Details
-          </Button>
+      <div className="flex gap-3 mt-4">
+        <div className="flex gap-2">
+          {item.external_url && (
+            <Button
+              as="a"
+              href={item.external_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="primary"
+              size="sm"
+              icon={
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              }
+            >
+              Open Problem
+            </Button>
+          )}
+          {onOpen && (
+            <Button variant="secondary" size="sm" onClick={onOpen}>
+              View Details
+            </Button>
+          )}
+        </div>
+        {allowManualRating && (
+          <div className="flex-1">
+            <RatingSelector
+              onRate={handleRate}
+              currentRating={item.recent_review?.rating}
+            />
+          </div>
         )}
       </div>
     </Card>
+
+    {/* Delete Confirmation */}
+    {onDelete && (
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Item?"
+        message={`Are you sure you want to delete "${item.title}"? This action cannot be undone.`}
+        confirmLabel="Delete Item"
+        onConfirm={() => {
+          onDelete()
+          setShowDeleteConfirm(false)
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+        variant="danger"
+      />
+    )}
+  </>
   )
 }

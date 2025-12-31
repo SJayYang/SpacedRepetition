@@ -15,6 +15,7 @@ export default function Items() {
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedDifficulty, setSelectedDifficulty] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('created_desc')
 
   const [formData, setFormData] = useState({
     collection_id: '',
@@ -34,7 +35,7 @@ export default function Items() {
     try {
       setLoading(true)
       const [itemsData, collectionsData] = await Promise.all([
-        itemsAPI.list(),
+        itemsAPI.list({ limit: 500 }),
         collectionsAPI.list(),
       ])
       setItems(itemsData)
@@ -97,11 +98,12 @@ export default function Items() {
     setSelectedStatus('')
     setSelectedDifficulty('')
     setSearchQuery('')
+    setSortBy('created_desc')
   }
 
   // Filter and search items
   const filteredItems = useMemo(() => {
-    return items.filter(item => {
+    let filtered = items.filter(item => {
       // Collection filter
       if (selectedCollection && item.collection_id !== selectedCollection) {
         return false
@@ -124,7 +126,39 @@ export default function Items() {
 
       return true
     })
-  }, [items, selectedCollection, selectedStatus, selectedDifficulty, searchQuery])
+
+    // Sort items
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'created_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'created_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'review_asc': {
+          const aDate = a.scheduling_states?.[0]?.next_review_at
+          const bDate = b.scheduling_states?.[0]?.next_review_at
+          if (!aDate && !bDate) return 0
+          if (!aDate) return 1
+          if (!bDate) return -1
+          return new Date(aDate).getTime() - new Date(bDate).getTime()
+        }
+        case 'review_desc': {
+          const aDate = a.scheduling_states?.[0]?.next_review_at
+          const bDate = b.scheduling_states?.[0]?.next_review_at
+          if (!aDate && !bDate) return 0
+          if (!aDate) return 1
+          if (!bDate) return -1
+          return new Date(bDate).getTime() - new Date(aDate).getTime()
+        }
+        case 'title_asc':
+          return a.title.localeCompare(b.title)
+        case 'title_desc':
+          return b.title.localeCompare(a.title)
+        default:
+          return 0
+      }
+    })
+  }, [items, selectedCollection, selectedStatus, selectedDifficulty, searchQuery, sortBy])
 
   // Create a map of collection IDs to collection objects for quick lookup
   const collectionsMap = useMemo(() => {
@@ -278,10 +312,12 @@ export default function Items() {
           selectedStatus={selectedStatus}
           selectedDifficulty={selectedDifficulty}
           searchQuery={searchQuery}
+          sortBy={sortBy}
           onCollectionChange={setSelectedCollection}
           onStatusChange={setSelectedStatus}
           onDifficultyChange={setSelectedDifficulty}
           onSearchChange={setSearchQuery}
+          onSortChange={setSortBy}
           onClearFilters={handleClearFilters}
         />
       )}
@@ -294,6 +330,8 @@ export default function Items() {
             item={item}
             collection={collectionsMap[item.collection_id]}
             showPattern={false}
+            allowManualRating={true}
+            onRated={loadData}
           />
         ))}
       </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collectionsAPI, presetsAPI } from '../api/client'
 import { Collection, Preset } from '../types'
@@ -13,6 +13,10 @@ export default function Collections() {
   const [newCollectionName, setNewCollectionName] = useState('')
   const [selectedPreset, setSelectedPreset] = useState<string>('')
   const [importCollectionId, setImportCollectionId] = useState<string>('')
+
+  // Filter and sort states
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('name_asc')
 
   useEffect(() => {
     loadData()
@@ -67,6 +71,38 @@ export default function Collections() {
     }
   }
 
+  const handleClearFilters = () => {
+    setSearchQuery('')
+    setSortBy('name_asc')
+  }
+
+  // Filter and sort collections
+  const filteredCollections = useMemo(() => {
+    let filtered = collections.filter(collection => {
+      // Search filter
+      if (searchQuery && !collection.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false
+      }
+      return true
+    })
+
+    // Sort collections
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name_asc':
+          return a.name.localeCompare(b.name)
+        case 'name_desc':
+          return b.name.localeCompare(a.name)
+        case 'created_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'created_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        default:
+          return 0
+      }
+    })
+  }, [collections, searchQuery, sortBy])
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
   }
@@ -74,7 +110,12 @@ export default function Collections() {
   return (
     <div className="px-4 py-6 sm:px-0">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Collections</h1>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Collections</h1>
+          <p className="text-gray-600 mt-1">
+            Showing {filteredCollections.length} of {collections.length} collections
+          </p>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setShowImportModal(true)}
@@ -120,9 +161,59 @@ export default function Collections() {
         </div>
       )}
 
+      {/* Filters */}
+      {collections.length > 0 && (
+        <div className="bg-white shadow rounded-lg p-4 mb-6 border border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</h3>
+            {(searchQuery || sortBy !== 'name_asc') && (
+              <button
+                onClick={handleClearFilters}
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Search */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Search
+              </label>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+              />
+            </div>
+
+            {/* Sort By */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Sort By
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+              >
+                <option value="name_asc">Name (A-Z)</option>
+                <option value="name_desc">Name (Z-A)</option>
+                <option value="created_desc">Newest First</option>
+                <option value="created_asc">Oldest First</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Collections List */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {collections.map((collection) => (
+        {filteredCollections.map((collection) => (
           <div
             key={collection.id}
             onClick={() => navigate(`/collections/${collection.id}`)}
@@ -156,6 +247,21 @@ export default function Collections() {
       {collections.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <p className="text-gray-600">No collections yet. Create one to get started!</p>
+        </div>
+      )}
+
+      {collections.length > 0 && filteredCollections.length === 0 && (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p className="text-gray-600 mb-4 mt-4">No collections match your filters.</p>
+          <button
+            onClick={handleClearFilters}
+            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
+          >
+            Clear Filters
+          </button>
         </div>
       )}
 

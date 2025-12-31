@@ -30,6 +30,11 @@ export interface Item {
   updated_at: string
   archived_at?: string
   scheduling_states?: SchedulingState[]
+  recent_review?: {
+    item_id: string
+    rating: 1 | 2 | 3 | 4
+    reviewed_at: string
+  }
 }
 
 export interface SchedulingState {

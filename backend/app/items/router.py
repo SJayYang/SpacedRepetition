@@ -31,7 +31,29 @@ async def list_items(
         query = query.is_("archived_at", "null")
 
     response = query.execute()
-    return response.data
+    items = response.data
+
+    # Fetch the most recent review for each item
+    if items:
+        item_ids = [item["id"] for item in items]
+        reviews_response = supabase.table("reviews") \
+            .select("item_id, rating, reviewed_at") \
+            .eq("user_id", user["id"]) \
+            .in_("item_id", item_ids) \
+            .order("reviewed_at", desc=True) \
+            .execute()
+
+        # Create a map of item_id to most recent review
+        recent_reviews = {}
+        for review in reviews_response.data:
+            if review["item_id"] not in recent_reviews:
+                recent_reviews[review["item_id"]] = review
+
+        # Add recent review to each item
+        for item in items:
+            item["recent_review"] = recent_reviews.get(item["id"])
+
+    return items
 
 
 @router.post("/", response_model=ItemResponse)

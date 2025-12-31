@@ -38,3 +38,23 @@ export const getStatusLabel = (status: string): string => {
       return 'New'
   }
 }
+
+export const getRatingLabel = (rating: 1 | 2 | 3 | 4): string => {
+  const labels: Record<number, string> = {
+    1: 'Forgot',
+    2: 'Hard',
+    3: 'Good',
+    4: 'Easy',
+  }
+  return labels[rating] || 'Unknown'
+}
+
+export const getRatingVariant = (rating: 1 | 2 | 3 | 4): 'danger' | 'warning' | 'primary' | 'success' => {
+  const variants: Record<number, 'danger' | 'warning' | 'primary' | 'success'> = {
+    1: 'danger',
+    2: 'warning',
+    3: 'primary',
+    4: 'success',
+  }
+  return variants[rating] || 'primary'
+}
