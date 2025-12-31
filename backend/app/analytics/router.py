@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Query
 
-from app.dependencies import get_current_user, get_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase
 
 router = APIRouter()
 
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get("/summary")
 async def get_summary(
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get dashboard summary statistics."""
 
@@ -75,7 +75,7 @@ async def get_summary(
 async def get_retention_rate(
     days: int = Query(default=30, le=365),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get retention rate over time."""
     start_date = datetime.utcnow() - timedelta(days=days)
@@ -113,7 +113,7 @@ async def get_retention_rate(
 async def get_heatmap(
     days: int = Query(default=365, le=365),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get activity heatmap data (GitHub-style)."""
     start_date = datetime.utcnow() - timedelta(days=days)
@@ -136,7 +136,7 @@ async def get_heatmap(
 @router.get("/topics")
 async def get_topics_performance(
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get performance breakdown by topic."""
     # Get all reviews with item metadata

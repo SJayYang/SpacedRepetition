@@ -3,7 +3,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.dependencies import get_current_user, get_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase
 from app.collections.schemas import CollectionCreate, CollectionUpdate, CollectionResponse
 
 router = APIRouter()
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/")
 async def list_collections(
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """List user's collections."""
     response = supabase.table("collections") \
@@ -28,7 +28,7 @@ async def list_collections(
 async def create_collection(
     collection: CollectionCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Create a new collection."""
     response = supabase.table("collections").insert({
@@ -46,7 +46,7 @@ async def create_collection(
 async def get_collection(
     collection_id: UUID,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get collection details."""
     response = supabase.table("collections") \
@@ -67,7 +67,7 @@ async def update_collection(
     collection_id: UUID,
     collection: CollectionUpdate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Update collection."""
     update_data = collection.model_dump(exclude_unset=True)
@@ -88,7 +88,7 @@ async def update_collection(
 async def delete_collection(
     collection_id: UUID,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Delete collection."""
     response = supabase.table("collections").delete() \

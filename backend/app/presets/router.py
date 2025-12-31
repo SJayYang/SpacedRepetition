@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.dependencies import get_current_user, get_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase
 
 router = APIRouter()
 
@@ -51,7 +51,7 @@ async def import_preset(
     preset_name: str,
     collection_id: UUID,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Import preset to user's collection."""
     filepath = os.path.join(PRESETS_DIR, f"{preset_name}.json")

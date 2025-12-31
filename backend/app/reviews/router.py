@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Query
 
-from app.dependencies import get_current_user, get_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase
 from app.reviews.scheduler import scheduler, SchedulingState
 from app.reviews.schemas import ReviewCreate, ReviewResponse
 
@@ -17,7 +17,7 @@ async def get_due_items(
     limit: int = Query(default=50, le=100),
     collection_id: Optional[UUID] = None,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get items due for review."""
     query = supabase.table("scheduling_states") \
@@ -38,7 +38,7 @@ async def get_due_items(
 async def submit_review(
     review: ReviewCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Submit a review rating and update scheduling."""
 
@@ -99,7 +99,7 @@ async def submit_review(
 async def get_forecast(
     days: int = Query(default=30, le=90),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get forecast of upcoming reviews."""
 
@@ -126,7 +126,7 @@ async def get_forecast(
 async def get_review_history(
     limit: int = Query(default=100, le=500),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get review history."""
     response = supabase.table("reviews") \

@@ -4,7 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from app.dependencies import get_current_user, get_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase
 from app.items.schemas import ItemCreate, ItemUpdate, ItemBulkCreate, ItemResponse
 
 router = APIRouter()
@@ -16,7 +16,7 @@ async def list_items(
     archived: bool = False,
     limit: int = Query(default=100, le=500),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """List items with optional filtering."""
     query = supabase.table("items").select("*, scheduling_states(*)") \
@@ -38,7 +38,7 @@ async def list_items(
 async def create_item(
     item: ItemCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Create a new item."""
     # Create item
@@ -69,7 +69,7 @@ async def create_item(
 async def bulk_create_items(
     bulk_items: ItemBulkCreate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Bulk import items."""
     items_to_insert = []
@@ -106,7 +106,7 @@ async def bulk_create_items(
 async def get_item(
     item_id: UUID,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get item details."""
     response = supabase.table("items") \
@@ -127,7 +127,7 @@ async def update_item(
     item_id: UUID,
     item: ItemUpdate,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Update item."""
     update_data = item.model_dump(exclude_unset=True)
@@ -149,7 +149,7 @@ async def delete_item(
     item_id: UUID,
     archive: bool = Query(default=True),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Delete or archive item."""
     if archive:

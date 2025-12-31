@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.dependencies import get_current_user, get_supabase
+from app.dependencies import get_current_user, get_authenticated_supabase
 
 router = APIRouter()
 
@@ -8,7 +8,7 @@ router = APIRouter()
 @router.get("/me")
 async def get_current_user_info(
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Get current user profile."""
     response = supabase.table("profiles") \
@@ -24,7 +24,7 @@ async def get_current_user_info(
 async def update_settings(
     settings: dict,
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_supabase)
+    supabase=Depends(get_authenticated_supabase)
 ):
     """Update user settings."""
     response = supabase.table("profiles") \

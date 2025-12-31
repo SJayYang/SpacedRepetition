@@ -7,6 +7,22 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- =====================================================
+-- GRANT PERMISSIONS ON PUBLIC SCHEMA
+-- =====================================================
+-- Grant usage on public schema to anon and authenticated roles
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+
+-- Grant necessary permissions on all tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+
+-- Grant permissions on sequences (for auto-incrementing IDs)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+
+-- Ensure future tables also get these permissions
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated;
+
+-- =====================================================
 -- TRIGGER: Auto-create profile on signup
 -- =====================================================
 CREATE OR REPLACE FUNCTION public.handle_new_user()
