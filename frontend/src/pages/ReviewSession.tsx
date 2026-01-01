@@ -327,19 +327,6 @@ export default function ReviewSession() {
           )}
         </div>
 
-        {currentItem.items.metadata?.topics && currentItem.items.metadata.topics.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Topics:</h3>
-            <div className="flex flex-wrap gap-2">
-              {currentItem.items.metadata.topics.map((topic: string) => (
-                <Badge key={topic} variant="primary" size="sm">
-                  {topic}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
         {currentItem.items.metadata?.pattern && (
           <div className="mb-4">
             <Button

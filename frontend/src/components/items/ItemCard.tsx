@@ -101,19 +101,6 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
         )}
       </div>
 
-      {/* Topics */}
-      {item.metadata?.topics && item.metadata.topics.length > 0 && (
-        <div className="mb-3">
-          <div className="flex flex-wrap gap-1.5">
-            {item.metadata.topics.map((topic: string) => (
-              <Badge key={topic} size="sm">
-                {topic}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* Pattern with Toggle */}
       {item.metadata?.pattern && (
         <div className="mb-3">
