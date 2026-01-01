@@ -24,7 +24,8 @@
       "Bash(npm install date-fns)",
       "Bash(npm run build)",
       "Bash(npx tsc --noEmit src/components/common/DifficultyBadge.tsx src/components/common/StatusBadge.tsx src/components/common/ReviewDateDisplay.tsx src/components/common/Badge.tsx src/components/items/ItemCard.tsx src/components/items/ItemFilters.tsx src/pages/CollectionDetail.tsx)",
-      "Bash(python3 -c \"import json; data = json.load(open(''app/presets/data/neetcode150.json'')); print(f''Problems count: {len(data.get(\"\"problems\"\", []))}'')\")"
+      "Bash(python3 -c \"import json; data = json.load(open(''app/presets/data/neetcode150.json'')); print(f''Problems count: {len(data.get(\"\"problems\"\", []))}'')\")",
+      "Bash(python -m py_compile app/reviews/scheduler.py)"
     ],
     "deny": [],
     "ask": []
