@@ -8,19 +8,20 @@ import IconMenu from '../common/IconMenu'
 import ConfirmDialog from '../common/ConfirmDialog'
 import RatingSelector from './RatingSelector'
 import { reviewsAPI } from '../../api/client'
-import { getDifficultyVariant, getStatusVariant, getStatusLabel, getRatingLabel, getRatingVariant } from '../../utils/badgeHelpers'
+import { getDifficultyVariant, getRatingLabel, getRatingVariant } from '../../utils/badgeHelpers'
 
 interface ItemCardProps {
   item: Item
   collection?: Collection
   showPattern?: boolean
+  showCollectionBadge?: boolean
   onOpen?: () => void
   onDelete?: () => void
   onRated?: () => void
   allowManualRating?: boolean
 }
 
-export default function ItemCard({ item, collection, showPattern = false, onOpen, onDelete, onRated, allowManualRating = false }: ItemCardProps) {
+export default function ItemCard({ item, collection, showPattern = false, showCollectionBadge = true, onOpen, onDelete, onRated, allowManualRating = false }: ItemCardProps) {
   const [patternVisible, setPatternVisible] = useState(showPattern)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [localItem, setLocalItem] = useState(item)
@@ -111,17 +112,12 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
                 {localItem.metadata.difficulty}
               </Badge>
             )}
-            {schedulingState && (
-              <Badge variant={getStatusVariant(schedulingState.status)} size="sm" withBorder>
-                {getStatusLabel(schedulingState.status)}
-              </Badge>
-            )}
             {localItem.recent_review && (
               <Badge variant={getRatingVariant(localItem.recent_review.rating)} size="sm" withBorder>
                 Last: {getRatingLabel(localItem.recent_review.rating)}
               </Badge>
             )}
-            {collection && (
+            {showCollectionBadge && collection && (
               <Badge variant="primary" size="sm">
                 {collection.name}
               </Badge>

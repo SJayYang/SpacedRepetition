@@ -14,6 +14,7 @@ export default function Items() {
   const [selectedCollection, setSelectedCollection] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedDifficulty, setSelectedDifficulty] = useState('')
+  const [selectedPattern, setSelectedPattern] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('created_desc')
 
@@ -97,9 +98,21 @@ export default function Items() {
     setSelectedCollection('')
     setSelectedStatus('')
     setSelectedDifficulty('')
+    setSelectedPattern('')
     setSearchQuery('')
     setSortBy('created_desc')
   }
+
+  // Extract unique patterns from items
+  const uniquePatterns = useMemo(() => {
+    const patterns = new Set<string>()
+    items.forEach(item => {
+      if (item.metadata?.pattern) {
+        patterns.add(item.metadata.pattern)
+      }
+    })
+    return Array.from(patterns).sort()
+  }, [items])
 
   // Filter and search items
   const filteredItems = useMemo(() => {
@@ -116,6 +129,11 @@ export default function Items() {
 
       // Difficulty filter
       if (selectedDifficulty && item.metadata?.difficulty !== selectedDifficulty) {
+        return false
+      }
+
+      // Pattern filter (exact match)
+      if (selectedPattern && item.metadata?.pattern !== selectedPattern) {
         return false
       }
 
@@ -158,7 +176,7 @@ export default function Items() {
           return 0
       }
     })
-  }, [items, selectedCollection, selectedStatus, selectedDifficulty, searchQuery, sortBy])
+  }, [items, selectedCollection, selectedStatus, selectedDifficulty, selectedPattern, searchQuery, sortBy])
 
   // Create a map of collection IDs to collection objects for quick lookup
   const collectionsMap = useMemo(() => {
@@ -308,17 +326,21 @@ export default function Items() {
       {items.length > 0 && (
         <ItemFilters
           collections={collections}
+          patterns={uniquePatterns}
           selectedCollection={selectedCollection}
           selectedStatus={selectedStatus}
           selectedDifficulty={selectedDifficulty}
+          selectedPattern={selectedPattern}
           searchQuery={searchQuery}
           sortBy={sortBy}
           onCollectionChange={setSelectedCollection}
           onStatusChange={setSelectedStatus}
           onDifficultyChange={setSelectedDifficulty}
+          onPatternChange={setSelectedPattern}
           onSearchChange={setSearchQuery}
           onSortChange={setSortBy}
           onClearFilters={handleClearFilters}
+          showCollectionFilter={true}
         />
       )}
 

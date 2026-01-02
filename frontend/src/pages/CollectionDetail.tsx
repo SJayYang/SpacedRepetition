@@ -26,6 +26,7 @@ export default function CollectionDetail() {
   // Filter states
   const [selectedStatus, setSelectedStatus] = useState('')
   const [selectedDifficulty, setSelectedDifficulty] = useState('')
+  const [selectedPattern, setSelectedPattern] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('created_desc')
 
@@ -92,9 +93,21 @@ export default function CollectionDetail() {
   const handleClearFilters = () => {
     setSelectedStatus('')
     setSelectedDifficulty('')
+    setSelectedPattern('')
     setSearchQuery('')
     setSortBy('created_desc')
   }
+
+  // Extract unique patterns from items
+  const uniquePatterns = useMemo(() => {
+    const patterns = new Set<string>()
+    items.forEach(item => {
+      if (item.metadata?.pattern) {
+        patterns.add(item.metadata.pattern)
+      }
+    })
+    return Array.from(patterns).sort()
+  }, [items])
 
   // Filter and sort items
   const filteredItems = useMemo(() => {
@@ -106,6 +119,11 @@ export default function CollectionDetail() {
 
       // Difficulty filter
       if (selectedDifficulty && item.metadata?.difficulty !== selectedDifficulty) {
+        return false
+      }
+
+      // Pattern filter (exact match)
+      if (selectedPattern && item.metadata?.pattern !== selectedPattern) {
         return false
       }
 
@@ -148,7 +166,7 @@ export default function CollectionDetail() {
           return 0
       }
     })
-  }, [items, selectedStatus, selectedDifficulty, searchQuery, sortBy])
+  }, [items, selectedStatus, selectedDifficulty, selectedPattern, searchQuery, sortBy])
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
@@ -273,18 +291,19 @@ export default function CollectionDetail() {
       {/* Filters - only show if there are items */}
       {items.length > 0 && (
         <ItemFilters
-          collections={[]}
-          selectedCollection=""
+          patterns={uniquePatterns}
           selectedStatus={selectedStatus}
           selectedDifficulty={selectedDifficulty}
+          selectedPattern={selectedPattern}
           searchQuery={searchQuery}
           sortBy={sortBy}
-          onCollectionChange={() => {}}
           onStatusChange={setSelectedStatus}
           onDifficultyChange={setSelectedDifficulty}
+          onPatternChange={setSelectedPattern}
           onSearchChange={setSearchQuery}
           onSortChange={setSortBy}
           onClearFilters={handleClearFilters}
+          showCollectionFilter={false}
         />
       )}
 
@@ -296,6 +315,7 @@ export default function CollectionDetail() {
               item={item}
               collection={collection}
               showPattern={false}
+              showCollectionBadge={false}
               onDelete={() => handleDeleteItem(item.id)}
               allowManualRating={true}
               onRated={loadData}
