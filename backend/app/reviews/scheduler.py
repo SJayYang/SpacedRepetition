@@ -75,7 +75,11 @@ class SM2Scheduler:
             repetitions += 1
 
             if repetitions == 1:
-                interval_days = 3  # Minimum 3 days for first successful review
+                # First successful review
+                if rating == 4:  # Easy - skip ahead to 7 days
+                    interval_days = 7
+                else:
+                    interval_days = 3  # Good/Hard - minimum 3 days
             elif repetitions == 2:
                 interval_days = 6
             else:

@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(python -m py_compile app/reviews/scheduler.py app/reviews/router.py app/items/router.py app/collections/router.py app/analytics/router.py app/presets/router.py)",
-      "Bash(npx tsc --noEmit src/pages/Collections.tsx src/pages/CollectionDetail.tsx)"
+      "Bash(npx tsc --noEmit src/pages/Collections.tsx src/pages/CollectionDetail.tsx)",
+      "Bash(npx prisma db push --schema=./prisma/schema.prisma --skip-generate)"
     ],
     "deny": [],
     "ask": []

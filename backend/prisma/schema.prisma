@@ -24,7 +24,7 @@ model Profile {
   // Settings
   timezone           String  @default("UTC")
   dailyReviewLimit   Int     @default(100) @map("daily_review_limit")
-  newItemsPerDay     Int     @default(20) @map("new_items_per_day")
+  newItemsPerDay     Int     @default(5) @map("new_items_per_day")
   defaultEaseFactor  Decimal @default(2.5) @map("default_ease_factor") @db.Decimal(4, 2)
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
