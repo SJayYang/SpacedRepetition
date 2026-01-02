@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -72,7 +72,7 @@ async def update_collection(
 ):
     """Update collection."""
     update_data = collection.model_dump(exclude_unset=True)
-    update_data["updated_at"] = datetime.utcnow().isoformat()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     response = supabase.table("collections").update(update_data) \
         .eq("id", str(collection_id)) \

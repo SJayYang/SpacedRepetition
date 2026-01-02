@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Item, Collection } from '../../types'
 import ReviewDateDisplay from '../common/ReviewDateDisplay'
 import Badge from '../common/Badge'
@@ -23,17 +23,57 @@ interface ItemCardProps {
 export default function ItemCard({ item, collection, showPattern = false, onOpen, onDelete, onRated, allowManualRating = false }: ItemCardProps) {
   const [patternVisible, setPatternVisible] = useState(showPattern)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const schedulingState = item.scheduling_states?.[0]
+  const [localItem, setLocalItem] = useState(item)
+  const schedulingState = localItem.scheduling_states?.[0]
+
+  // Update local state when item prop changes
+  useEffect(() => {
+    setLocalItem(item)
+  }, [item])
 
   const handleRate = async (rating: 1 | 2 | 3 | 4) => {
     try {
-      await reviewsAPI.submit({ item_id: item.id, rating })
+      // Optimistically update the UI
+      const now = new Date().toISOString()
+      const optimisticItem = {
+        ...localItem,
+        recent_review: {
+          item_id: localItem.id,
+          rating,
+          reviewed_at: now
+        }
+      }
+      setLocalItem(optimisticItem)
+
+      // Submit to backend
+      const response = await reviewsAPI.submit({ item_id: item.id, rating })
+
+      // Update with real data from backend if available
+      if (response) {
+        setLocalItem({
+          ...localItem,
+          recent_review: {
+            item_id: localItem.id,
+            rating,
+            reviewed_at: now
+          },
+          scheduling_states: localItem.scheduling_states ? [{
+            ...localItem.scheduling_states[0],
+            next_review_at: response.next_review_at,
+            interval_days: response.interval_days,
+            last_review_at: now
+          }] : undefined
+        })
+      }
+
       if (onRated) {
         onRated()
       }
     } catch (err) {
       console.error('Error submitting rating:', err)
       alert('Failed to submit rating')
+      // Revert optimistic update on error
+      setLocalItem(item)
     }
   }
 
@@ -45,7 +85,7 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-2">
               <h3 className="text-lg font-semibold text-gray-900">
-                {item.title}
+                {localItem.title}
               </h3>
               {onDelete && (
                 <IconMenu
@@ -66,9 +106,9 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
               )}
             </div>
           <div className="flex flex-wrap gap-2 items-center">
-            {item.metadata?.difficulty && (
-              <Badge variant={getDifficultyVariant(item.metadata.difficulty)} size="sm">
-                {item.metadata.difficulty}
+            {localItem.metadata?.difficulty && (
+              <Badge variant={getDifficultyVariant(localItem.metadata.difficulty)} size="sm">
+                {localItem.metadata.difficulty}
               </Badge>
             )}
             {schedulingState && (
@@ -76,9 +116,9 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
                 {getStatusLabel(schedulingState.status)}
               </Badge>
             )}
-            {item.recent_review && (
-              <Badge variant={getRatingVariant(item.recent_review.rating)} size="sm" withBorder>
-                Last: {getRatingLabel(item.recent_review.rating)}
+            {localItem.recent_review && (
+              <Badge variant={getRatingVariant(localItem.recent_review.rating)} size="sm" withBorder>
+                Last: {getRatingLabel(localItem.recent_review.rating)}
               </Badge>
             )}
             {collection && (
@@ -102,7 +142,7 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
       </div>
 
       {/* Pattern with Toggle */}
-      {item.metadata?.pattern && (
+      {localItem.metadata?.pattern && (
         <div className="mb-3">
           <Button
             variant="ghost"
@@ -126,7 +166,7 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
           {patternVisible && (
             <div className="mt-2 p-3 bg-purple-50 border border-purple-200 rounded-md">
               <div className="text-sm font-medium text-purple-900">
-                Pattern: {item.metadata.pattern}
+                Pattern: {localItem.metadata.pattern}
               </div>
             </div>
           )}
@@ -134,11 +174,11 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
       )}
 
       {/* Notes */}
-      {item.notes && (
+      {localItem.notes && (
         <div className="mb-3">
           <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md border border-gray-200">
             <span className="font-medium text-gray-700">Notes: </span>
-            <span className="whitespace-pre-wrap">{item.notes}</span>
+            <span className="whitespace-pre-wrap">{localItem.notes}</span>
           </div>
         </div>
       )}
@@ -146,10 +186,10 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
       {/* Actions */}
       <div className="flex gap-3 mt-4">
         <div className="flex gap-2">
-          {item.external_url && (
+          {localItem.external_url && (
             <Button
               as="a"
-              href={item.external_url}
+              href={localItem.external_url}
               target="_blank"
               rel="noopener noreferrer"
               variant="primary"
@@ -173,7 +213,7 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
           <div className="flex-1">
             <RatingSelector
               onRate={handleRate}
-              currentRating={item.recent_review?.rating}
+              currentRating={localItem.recent_review?.rating}
             />
           </div>
         )}
@@ -185,7 +225,7 @@ export default function ItemCard({ item, collection, showPattern = false, onOpen
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Delete Item?"
-        message={`Are you sure you want to delete "${item.title}"? This action cannot be undone.`}
+        message={`Are you sure you want to delete "${localItem.title}"? This action cannot be undone.`}
         confirmLabel="Delete Item"
         onConfirm={() => {
           onDelete()

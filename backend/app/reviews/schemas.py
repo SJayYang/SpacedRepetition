@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from pydantic import BaseModel
 from app.reviews.scheduler import Rating

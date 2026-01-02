@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from collections import defaultdict
 
 from fastapi import APIRouter, Depends, Query
@@ -19,11 +19,11 @@ async def get_summary(
     due_response = supabase.table("scheduling_states") \
         .select("id", count="exact") \
         .eq("user_id", user["id"]) \
-        .lte("next_review_at", datetime.utcnow().isoformat()) \
+        .lte("next_review_at", datetime.now(timezone.utc).isoformat()) \
         .execute()
 
     # Overdue items (more than 1 day overdue)
-    yesterday = datetime.utcnow() - timedelta(days=1)
+    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
     overdue_response = supabase.table("scheduling_states") \
         .select("id", count="exact") \
         .eq("user_id", user["id"]) \
@@ -38,7 +38,7 @@ async def get_summary(
         .execute()
 
     # Reviews completed today
-    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     today_reviews_response = supabase.table("reviews") \
         .select("id", count="exact") \
         .eq("user_id", user["id"]) \
@@ -49,7 +49,7 @@ async def get_summary(
     streak = await calculate_streak(user["id"], supabase)
 
     # Retention rate (last 30 days)
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     retention_response = supabase.table("reviews") \
         .select("rating") \
         .eq("user_id", user["id"]) \
@@ -78,7 +78,7 @@ async def get_retention_rate(
     supabase=Depends(get_authenticated_supabase)
 ):
     """Get retention rate over time."""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     response = supabase.table("reviews") \
         .select("rating, reviewed_at") \
@@ -116,7 +116,7 @@ async def get_heatmap(
     supabase=Depends(get_authenticated_supabase)
 ):
     """Get activity heatmap data (GitHub-style)."""
-    start_date = datetime.utcnow() - timedelta(days=days)
+    start_date = datetime.now(timezone.utc) - timedelta(days=days)
 
     response = supabase.table("reviews") \
         .select("reviewed_at") \
@@ -172,7 +172,7 @@ async def get_topics_performance(
 async def calculate_streak(user_id: str, supabase) -> int:
     """Calculate current review streak in days."""
     # Get reviews from last 60 days
-    start_date = datetime.utcnow() - timedelta(days=60)
+    start_date = datetime.now(timezone.utc) - timedelta(days=60)
 
     response = supabase.table("reviews") \
         .select("reviewed_at") \
@@ -192,7 +192,7 @@ async def calculate_streak(user_id: str, supabase) -> int:
 
     # Count consecutive days from today
     streak = 0
-    current_date = datetime.utcnow().date()
+    current_date = datetime.now(timezone.utc).date()
 
     while True:
         if current_date.isoformat() in dates_with_reviews:

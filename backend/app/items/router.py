@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from typing import Optional
 
@@ -82,7 +82,7 @@ async def create_item(
         "item_id": created_item["id"],
         "user_id": user["id"],
         "status": "new",
-        "next_review_at": datetime.utcnow().isoformat(),
+        "next_review_at": datetime.now(timezone.utc).isoformat(),
     }).execute()
 
     return created_item
@@ -118,7 +118,7 @@ async def bulk_create_items(
             "item_id": item["id"],
             "user_id": user["id"],
             "status": "new",
-            "next_review_at": datetime.utcnow().isoformat(),
+            "next_review_at": datetime.now(timezone.utc).isoformat(),
         })
 
     supabase.table("scheduling_states").insert(scheduling_states).execute()
@@ -155,7 +155,7 @@ async def update_item(
 ):
     """Update item."""
     update_data = item.model_dump(exclude_unset=True)
-    update_data["updated_at"] = datetime.utcnow().isoformat()
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
 
     response = supabase.table("items").update(update_data) \
         .eq("id", str(item_id)) \
@@ -179,7 +179,7 @@ async def delete_item(
     if archive:
         # Soft delete (archive)
         response = supabase.table("items").update({
-            "archived_at": datetime.utcnow().isoformat()
+            "archived_at": datetime.now(timezone.utc).isoformat()
         }).eq("id", str(item_id)).eq("user_id", user["id"]).execute()
     else:
         # Hard delete

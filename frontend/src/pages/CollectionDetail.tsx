@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { collectionsAPI, itemsAPI } from '../api/client'
 import { Collection, Item } from '../types'
 import ItemCard from '../components/items/ItemCard'
+import ItemFilters from '../components/items/ItemFilters'
 import Badge from '../components/common/Badge'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
@@ -21,6 +22,12 @@ export default function CollectionDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  // Filter states
+  const [selectedStatus, setSelectedStatus] = useState('')
+  const [selectedDifficulty, setSelectedDifficulty] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('created_desc')
 
   useEffect(() => {
     loadData()
@@ -82,6 +89,67 @@ export default function CollectionDetail() {
     }
   }
 
+  const handleClearFilters = () => {
+    setSelectedStatus('')
+    setSelectedDifficulty('')
+    setSearchQuery('')
+    setSortBy('created_desc')
+  }
+
+  // Filter and sort items
+  const filteredItems = useMemo(() => {
+    let filtered = items.filter(item => {
+      // Status filter
+      if (selectedStatus && item.scheduling_states?.[0]?.status !== selectedStatus) {
+        return false
+      }
+
+      // Difficulty filter
+      if (selectedDifficulty && item.metadata?.difficulty !== selectedDifficulty) {
+        return false
+      }
+
+      // Search filter
+      if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false
+      }
+
+      return true
+    })
+
+    // Sort items
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'created_desc':
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        case 'created_asc':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        case 'review_asc': {
+          const aDate = a.scheduling_states?.[0]?.next_review_at
+          const bDate = b.scheduling_states?.[0]?.next_review_at
+          if (!aDate && !bDate) return 0
+          if (!aDate) return 1
+          if (!bDate) return -1
+          return new Date(aDate).getTime() - new Date(bDate).getTime()
+        }
+        case 'review_desc': {
+          const aDate = a.scheduling_states?.[0]?.next_review_at
+          const bDate = b.scheduling_states?.[0]?.next_review_at
+          if (!aDate && !bDate) return 0
+          if (!aDate) return 1
+          if (!bDate) return -1
+          return new Date(bDate).getTime() - new Date(aDate).getTime()
+        }
+        case 'title_asc':
+          return a.title.localeCompare(b.title)
+        case 'title_desc':
+          return b.title.localeCompare(a.title)
+        default:
+          return 0
+      }
+    })
+  }, [items, selectedStatus, selectedDifficulty, searchQuery, sortBy])
+
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
   }
@@ -100,7 +168,7 @@ export default function CollectionDetail() {
     )
   }
 
-  // Calculate statistics
+  // Calculate statistics from all items (not filtered)
   const stats = {
     total: items.length,
     new: items.filter(item => item.scheduling_states?.[0]?.status === 'new').length,
@@ -185,7 +253,7 @@ export default function CollectionDetail() {
       {/* Items */}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">
-          Problems <span className="text-gray-500">({items.length})</span>
+          Problems <span className="text-gray-500">({filteredItems.length} of {items.length})</span>
         </h2>
         {stats.total > 0 && (stats.new > 0 || stats.learning > 0 || stats.review > 0) && (
           <Button
@@ -202,9 +270,27 @@ export default function CollectionDetail() {
         )}
       </div>
 
-      {items.length > 0 ? (
+      {/* Filters - only show if there are items */}
+      {items.length > 0 && (
+        <ItemFilters
+          collections={[]}
+          selectedCollection=""
+          selectedStatus={selectedStatus}
+          selectedDifficulty={selectedDifficulty}
+          searchQuery={searchQuery}
+          sortBy={sortBy}
+          onCollectionChange={() => {}}
+          onStatusChange={setSelectedStatus}
+          onDifficultyChange={setSelectedDifficulty}
+          onSearchChange={setSearchQuery}
+          onSortChange={setSortBy}
+          onClearFilters={handleClearFilters}
+        />
+      )}
+
+      {filteredItems.length > 0 ? (
         <div className="space-y-4">
-          {items.map((item) => (
+          {filteredItems.map((item) => (
             <ItemCard
               key={item.id}
               item={item}
@@ -215,6 +301,19 @@ export default function CollectionDetail() {
               onRated={loadData}
             />
           ))}
+        </div>
+      ) : items.length > 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <p className="text-gray-600 mb-4 mt-4">No items match your filters.</p>
+          <Button
+            onClick={handleClearFilters}
+            variant="secondary"
+          >
+            Clear Filters
+          </Button>
         </div>
       ) : (
         <EmptyState

@@ -1,31 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(mkdir -p backend/app/{auth,collections,items,reviews,analytics,presets/data})",
-      "Bash(mkdir -p frontend/src/{api,components,pages,hooks,types,lib})",
-      "Bash(touch backend/app/__init__.py backend/app/auth/__init__.py backend/app/collections/__init__.py backend/app/items/__init__.py backend/app/reviews/__init__.py backend/app/analytics/__init__.py backend/app/presets/__init__.py)",
-      "Bash(npx prisma db push --schema=./prisma/schema.prisma)",
-      "Bash(cat .env)",
-      "Bash(npx prisma --version)",
-      "WebFetch(domain:prisma-client-py.readthedocs.io)",
-      "WebFetch(domain:github.com)",
-      "Bash(npx prisma@5 db push --schema=./prisma/schema.prisma)",
-      "Bash(npx prisma@5 db push --schema=./prisma/schema.prisma --skip-generate)",
-      "Bash(set -a)",
-      "Bash(source ../.env)",
-      "Bash(set +a)",
-      "Bash(cat ../.env)",
-      "Bash(npx prisma@5 db push --schema=./prisma/schema.prisma --accept-data-loss --skip-generate)",
-      "Bash(python3 -m prisma generate --schema=./prisma/schema.prisma)",
-      "Bash(conda run -n spacerep prisma generate --schema=./prisma/schema.prisma)",
-      "Bash(python3 -c \"import json; print(json.dumps(json.load(open(''''app/presets/data/blind75.json'''')), indent=2))\")",
-      "Bash(python -m py_compile app/presets/router.py)",
-      "Bash(tree -L 3 /Users/stanleyyang/Github/SpacedRepetition/frontend/src -I 'node_modules')",
-      "Bash(npm install date-fns)",
-      "Bash(npm run build)",
-      "Bash(npx tsc --noEmit src/components/common/DifficultyBadge.tsx src/components/common/StatusBadge.tsx src/components/common/ReviewDateDisplay.tsx src/components/common/Badge.tsx src/components/items/ItemCard.tsx src/components/items/ItemFilters.tsx src/pages/CollectionDetail.tsx)",
-      "Bash(python3 -c \"import json; data = json.load(open(''app/presets/data/neetcode150.json'')); print(f''Problems count: {len(data.get(\"\"problems\"\", []))}'')\")",
-      "Bash(python -m py_compile app/reviews/scheduler.py)"
+      "Bash(python -m py_compile app/reviews/scheduler.py app/reviews/router.py app/items/router.py app/collections/router.py app/analytics/router.py app/presets/router.py)",
+      "Bash(npx tsc --noEmit src/pages/Collections.tsx src/pages/CollectionDetail.tsx)"
     ],
     "deny": [],
     "ask": []

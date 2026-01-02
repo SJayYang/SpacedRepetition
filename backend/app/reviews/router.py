@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import UUID
 from collections import defaultdict
@@ -23,7 +23,7 @@ async def get_due_items(
     query = supabase.table("scheduling_states") \
         .select("*, items(*)") \
         .eq("user_id", user["id"]) \
-        .lte("next_review_at", datetime.utcnow().isoformat()) \
+        .lte("next_review_at", datetime.now(timezone.utc).isoformat()) \
         .order("next_review_at") \
         .limit(limit)
 
@@ -84,7 +84,7 @@ async def submit_review(
         "status": result.new_state.status,
         "next_review_at": result.new_state.next_review_at.isoformat(),
         "last_review_at": result.new_state.last_review_at.isoformat(),
-        "updated_at": datetime.utcnow().isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }).eq("item_id", str(review.item_id)).eq("user_id", user["id"]).execute()
 
     return ReviewResponse(
@@ -104,7 +104,7 @@ async def get_forecast(
 ):
     """Get forecast of upcoming reviews."""
 
-    end_date = datetime.utcnow().replace(hour=23, minute=59, second=59)
+    end_date = datetime.now(timezone.utc).replace(hour=23, minute=59, second=59)
     end_date = end_date + timedelta(days=days)
 
     response = supabase.table("scheduling_states") \

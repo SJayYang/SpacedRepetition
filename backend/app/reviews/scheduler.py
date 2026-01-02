@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Literal
 
@@ -14,7 +14,7 @@ class SchedulingState(BaseModel):
     interval_days: int = 0
     repetitions: int = 0
     status: Status = "new"
-    next_review_at: datetime = datetime.utcnow()
+    next_review_at: datetime = datetime.now(timezone.utc)
     last_review_at: datetime | None = None
 
 
@@ -51,7 +51,7 @@ class SM2Scheduler:
 
         # Check if this is a premature review (reviewed before it was due)
         # If reviewed early, we should be more conservative with intervals
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         is_early_review = False
         if current_state.last_review_at:
             time_since_last = (now - current_state.last_review_at).days
@@ -69,13 +69,13 @@ class SM2Scheduler:
         if q < 3:
             # Failed - reset
             repetitions = 0
-            interval_days = 1
+            interval_days = 3  # Minimum 3 days even for failed reviews
         else:
             # Success
             repetitions += 1
 
             if repetitions == 1:
-                interval_days = 1
+                interval_days = 3  # Minimum 3 days for first successful review
             elif repetitions == 2:
                 interval_days = 6
             else:
@@ -85,13 +85,17 @@ class SM2Scheduler:
             if is_early_review:
                 if rating == 3:  # Good - but reviewed early
                     # Reset to short interval since it's still being learned
-                    interval_days = 1 if repetitions <= 2 else 3
+                    interval_days = 3 if repetitions <= 2 else max(3, interval_days)
                 elif rating == 4:  # Easy - even though reviewed early
                     # Still comfortable, but don't extend too much
                     interval_days = max(3, min(interval_days, 7))
 
-        next_review_at = datetime.utcnow() + timedelta(days=interval_days)
-        status = self._determine_status(repetitions, interval_days)
+        # Enforce minimum 3-day interval for all reviews
+        interval_days = max(3, interval_days)
+
+        next_review_at = datetime.now(timezone.utc) + timedelta(days=interval_days)
+        # Item is being reviewed, so it's no longer "new" - mark as has_been_reviewed
+        status = self._determine_status(repetitions, interval_days, has_been_reviewed=True)
 
         new_state = SchedulingState(
             ease_factor=ease_factor,
@@ -99,7 +103,7 @@ class SM2Scheduler:
             repetitions=repetitions,
             status=status,
             next_review_at=next_review_at,
-            last_review_at=datetime.utcnow()
+            last_review_at=datetime.now(timezone.utc)
         )
 
         return ReviewResult(
@@ -107,9 +111,10 @@ class SM2Scheduler:
             next_review_at=next_review_at
         )
 
-    def _determine_status(self, repetitions: int, interval_days: int) -> Status:
+    def _determine_status(self, repetitions: int, interval_days: int, has_been_reviewed: bool = False) -> Status:
+        # If item has been reviewed but failed (repetitions == 0), it should be in learning mode
         if repetitions == 0:
-            return "new"
+            return "learning" if has_been_reviewed else "new"
         elif interval_days < 21:
             return "learning"
         return "review"
