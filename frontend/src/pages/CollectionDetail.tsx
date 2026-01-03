@@ -318,7 +318,6 @@ export default function CollectionDetail() {
               showCollectionBadge={false}
               onDelete={() => handleDeleteItem(item.id)}
               allowManualRating={true}
-              onRated={loadData}
             />
           ))}
         </div>

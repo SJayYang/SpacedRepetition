@@ -119,7 +119,7 @@ class SM2Scheduler:
         # If item has been reviewed but failed (repetitions == 0), it should be in learning mode
         if repetitions == 0:
             return "learning" if has_been_reviewed else "new"
-        elif interval_days < 21:
+        elif interval_days < 7:
             return "learning"
         return "review"
 

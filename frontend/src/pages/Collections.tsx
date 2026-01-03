@@ -40,13 +40,14 @@ export default function Collections() {
     if (!newCollectionName.trim()) return
 
     try {
-      await collectionsAPI.create({
+      const newCollection = await collectionsAPI.create({
         name: newCollectionName,
         item_type: 'leetcode',
       })
+      // Optimistically add to collections list
+      setCollections([...collections, newCollection])
       setNewCollectionName('')
       setShowCreateForm(false)
-      loadData()
     } catch (err) {
       console.error('Error creating collection:', err)
       alert('Failed to create collection')

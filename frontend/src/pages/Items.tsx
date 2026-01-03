@@ -64,7 +64,7 @@ export default function Items() {
     try {
       const topics = formData.topics.split(',').map(t => t.trim()).filter(t => t)
 
-      await itemsAPI.create({
+      const newItem = await itemsAPI.create({
         collection_id: formData.collection_id,
         title: formData.title,
         external_url: formData.external_url || undefined,
@@ -75,6 +75,9 @@ export default function Items() {
         },
         notes: formData.notes || undefined,
       })
+
+      // Optimistically add to items list
+      setItems([newItem, ...items])
 
       // Reset form
       setFormData({
@@ -87,7 +90,6 @@ export default function Items() {
         notes: '',
       })
       setShowAddForm(false)
-      loadData()
     } catch (err) {
       console.error('Error creating item:', err)
       alert('Failed to create item')
@@ -353,7 +355,6 @@ export default function Items() {
             collection={collectionsMap[item.collection_id]}
             showPattern={false}
             allowManualRating={true}
-            onRated={loadData}
           />
         ))}
       </div>
