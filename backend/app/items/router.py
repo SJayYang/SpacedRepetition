@@ -1,13 +1,21 @@
-from datetime import datetime, timezone
 from uuid import UUID
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 
 from app.dependencies import get_current_user, get_authenticated_supabase, ensure_profile_exists
 from app.items.schemas import ItemCreate, ItemUpdate, ItemBulkCreate, ItemResponse
+from app.services.items import ItemsService
 
 router = APIRouter()
+
+
+def get_items_service(
+    user: dict = Depends(get_current_user),
+    supabase = Depends(get_authenticated_supabase)
+) -> ItemsService:
+    """Dependency to get items service."""
+    return ItemsService(supabase, user["id"])
 
 
 @router.get("/")
@@ -15,180 +23,69 @@ async def list_items(
     collection_id: Optional[UUID] = None,
     archived: bool = False,
     limit: int = Query(default=100, le=500),
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: ItemsService = Depends(get_items_service)
 ):
     """List items with optional filtering."""
-    query = supabase.table("items").select("*, scheduling_states(*)") \
-        .eq("user_id", user["id"]) \
-        .order("created_at", desc=True) \
-        .limit(limit)
-
-    if collection_id:
-        query = query.eq("collection_id", str(collection_id))
-
-    if not archived:
-        query = query.is_("archived_at", "null")
-
-    response = query.execute()
-    items = response.data
-
-    # Fetch the most recent review for each item
-    if items:
-        item_ids = [item["id"] for item in items]
-        reviews_response = supabase.table("reviews") \
-            .select("item_id, rating, reviewed_at") \
-            .eq("user_id", user["id"]) \
-            .in_("item_id", item_ids) \
-            .order("reviewed_at", desc=True) \
-            .execute()
-
-        # Create a map of item_id to most recent review
-        recent_reviews = {}
-        for review in reviews_response.data:
-            if review["item_id"] not in recent_reviews:
-                recent_reviews[review["item_id"]] = review
-
-        # Add recent review to each item
-        for item in items:
-            item["recent_review"] = recent_reviews.get(item["id"])
-
-    return items
+    return await service.list(collection_id=collection_id, archived=archived, limit=limit)
 
 
 @router.post("/", response_model=ItemResponse)
 async def create_item(
     item: ItemCreate,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase),
+    service: ItemsService = Depends(get_items_service),
     _: None = Depends(ensure_profile_exists)
 ):
     """Create a new item."""
-    # Create item
-    item_response = supabase.table("items").insert({
-        "user_id": user["id"],
+    return await service.create_with_scheduling({
         "collection_id": str(item.collection_id),
         "title": item.title,
         "external_id": item.external_id,
         "external_url": item.external_url,
         "metadata": item.metadata,
         "notes": item.notes,
-    }).execute()
-
-    created_item = item_response.data[0]
-
-    # Create scheduling state for the new item
-    supabase.table("scheduling_states").insert({
-        "item_id": created_item["id"],
-        "user_id": user["id"],
-        "status": "new",
-        "next_review_at": datetime.now(timezone.utc).isoformat(),
-    }).execute()
-
-    return created_item
+    })
 
 
 @router.post("/bulk")
 async def bulk_create_items(
     bulk_items: ItemBulkCreate,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase),
+    service: ItemsService = Depends(get_items_service),
     _: None = Depends(ensure_profile_exists)
 ):
     """Bulk import items."""
-    items_to_insert = []
-    for item_data in bulk_items.items:
-        items_to_insert.append({
-            "user_id": user["id"],
-            "collection_id": str(bulk_items.collection_id),
-            "title": item_data.get("title"),
-            "external_id": item_data.get("external_id"),
-            "external_url": item_data.get("external_url"),
-            "metadata": item_data.get("metadata", {}),
-            "notes": item_data.get("notes"),
-        })
-
-    # Insert items
-    items_response = supabase.table("items").insert(items_to_insert).execute()
-
-    # Create scheduling states
-    scheduling_states = []
-    for item in items_response.data:
-        scheduling_states.append({
-            "item_id": item["id"],
-            "user_id": user["id"],
-            "status": "new",
-            "next_review_at": datetime.now(timezone.utc).isoformat(),
-        })
-
-    supabase.table("scheduling_states").insert(scheduling_states).execute()
-
-    return {"message": f"Created {len(items_response.data)} items", "items": items_response.data}
+    return await service.bulk_create(bulk_items.collection_id, bulk_items.items)
 
 
 @router.get("/{item_id}")
 async def get_item(
     item_id: UUID,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: ItemsService = Depends(get_items_service)
 ):
     """Get item details."""
-    response = supabase.table("items") \
-        .select("*, scheduling_states(*)") \
-        .eq("id", str(item_id)) \
-        .eq("user_id", user["id"]) \
-        .single() \
-        .execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    return response.data
+    return await service.get(item_id, select="*, scheduling_states(*)", not_found_message="Item not found")
 
 
 @router.patch("/{item_id}")
 async def update_item(
     item_id: UUID,
     item: ItemUpdate,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: ItemsService = Depends(get_items_service)
 ):
     """Update item."""
     update_data = item.model_dump(exclude_unset=True)
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    response = supabase.table("items").update(update_data) \
-        .eq("id", str(item_id)) \
-        .eq("user_id", user["id"]) \
-        .execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    return response.data[0]
+    return await service.update(item_id, update_data, not_found_message="Item not found")
 
 
 @router.delete("/{item_id}")
 async def delete_item(
     item_id: UUID,
     archive: bool = Query(default=True),
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: ItemsService = Depends(get_items_service)
 ):
     """Delete or archive item."""
     if archive:
         # Soft delete (archive)
-        response = supabase.table("items").update({
-            "archived_at": datetime.now(timezone.utc).isoformat()
-        }).eq("id", str(item_id)).eq("user_id", user["id"]).execute()
+        return await service.archive(item_id)
     else:
         # Hard delete
-        response = supabase.table("items").delete() \
-            .eq("id", str(item_id)) \
-            .eq("user_id", user["id"]) \
-            .execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    return {"message": "Item archived" if archive else "Item deleted"}
+        return await service.delete(item_id, not_found_message="Item not found")

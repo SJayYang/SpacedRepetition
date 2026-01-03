@@ -1,103 +1,69 @@
-from datetime import datetime, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from app.dependencies import get_current_user, get_authenticated_supabase, ensure_profile_exists
 from app.collections.schemas import CollectionCreate, CollectionUpdate, CollectionResponse
+from app.services.collections import CollectionsService
 
 router = APIRouter()
 
 
+def get_collections_service(
+    user: dict = Depends(get_current_user),
+    supabase = Depends(get_authenticated_supabase)
+) -> CollectionsService:
+    """Dependency to get collections service."""
+    return CollectionsService(supabase, user["id"])
+
+
 @router.get("/")
 async def list_collections(
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: CollectionsService = Depends(get_collections_service)
 ):
     """List user's collections."""
-    response = supabase.table("collections") \
-        .select("*") \
-        .eq("user_id", user["id"]) \
-        .order("created_at") \
-        .execute()
-
-    return response.data
+    return await service.list()
 
 
 @router.post("/", response_model=CollectionResponse)
 async def create_collection(
     collection: CollectionCreate,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase),
+    service: CollectionsService = Depends(get_collections_service),
     _: None = Depends(ensure_profile_exists)
 ):
     """Create a new collection."""
-    response = supabase.table("collections").insert({
-        "user_id": user["id"],
+    return await service.create({
         "name": collection.name,
         "description": collection.description,
         "item_type": collection.item_type,
         "is_default": collection.is_default,
-    }).execute()
-
-    return response.data[0]
+    })
 
 
 @router.get("/{collection_id}")
 async def get_collection(
     collection_id: UUID,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: CollectionsService = Depends(get_collections_service)
 ):
     """Get collection details."""
-    response = supabase.table("collections") \
-        .select("*") \
-        .eq("id", str(collection_id)) \
-        .eq("user_id", user["id"]) \
-        .single() \
-        .execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Collection not found")
-
-    return response.data
+    return await service.get(collection_id, not_found_message="Collection not found")
 
 
 @router.patch("/{collection_id}")
 async def update_collection(
     collection_id: UUID,
     collection: CollectionUpdate,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: CollectionsService = Depends(get_collections_service)
 ):
     """Update collection."""
     update_data = collection.model_dump(exclude_unset=True)
-    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-    response = supabase.table("collections").update(update_data) \
-        .eq("id", str(collection_id)) \
-        .eq("user_id", user["id"]) \
-        .execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Collection not found")
-
-    return response.data[0]
+    return await service.update(collection_id, update_data, not_found_message="Collection not found")
 
 
 @router.delete("/{collection_id}")
 async def delete_collection(
     collection_id: UUID,
-    user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    service: CollectionsService = Depends(get_collections_service)
 ):
     """Delete collection."""
-    response = supabase.table("collections").delete() \
-        .eq("id", str(collection_id)) \
-        .eq("user_id", user["id"]) \
-        .execute()
-
-    if not response.data:
-        raise HTTPException(status_code=404, detail="Collection not found")
-
-    return {"message": "Collection deleted successfully"}
+    return await service.delete(collection_id, not_found_message="Collection not found")
