@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { collectionsAPI, presetsAPI } from '../api/client'
 import { Collection, Preset } from '../types'
+import Modal from '../components/common/Modal'
+import Input from '../components/common/Input'
+import Select from '../components/common/Select'
+import Button from '../components/common/Button'
+import GridList from '../components/common/GridList'
 
 export default function Collections() {
   const navigate = useNavigate()
@@ -101,36 +106,29 @@ export default function Collections() {
 
       {/* Create Form */}
       {showCreateForm && (
-        <div className="mb-6 bg-white shadow rounded-lg p-6">
+        <div className="mb-6 bg-white shadow rounded-lg p-6 border border-gray-200">
           <h3 className="text-lg font-semibold mb-4">Create New Collection</h3>
           <form onSubmit={handleCreateCollection} className="flex gap-4">
-            <input
+            <Input
               type="text"
               value={newCollectionName}
               onChange={(e) => setNewCollectionName(e.target.value)}
               placeholder="Collection name"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="flex-1"
             />
-            <button
-              type="submit"
-              className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-            >
+            <Button type="submit" variant="primary">
               Create
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCreateForm(false)}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-            >
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setShowCreateForm(false)}>
               Cancel
-            </button>
+            </Button>
           </form>
         </div>
       )}
 
 
       {/* Collections List */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <GridList columns={3}>
         {collections.map((collection) => (
           <div
             key={collection.id}
@@ -160,7 +158,7 @@ export default function Collections() {
             </div>
           </div>
         ))}
-      </div>
+      </GridList>
 
       {collections.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -170,65 +168,52 @@ export default function Collections() {
 
 
       {/* Import Modal */}
-      {showImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold mb-4">Import Preset List</h3>
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="Import Preset List"
+      >
+        <div className="space-y-4">
+          <Select
+            label="Select Preset"
+            value={selectedPreset}
+            onChange={(e) => setSelectedPreset(e.target.value)}
+          >
+            <option value="">Choose a preset...</option>
+            {presets.map((preset) => (
+              <option key={preset.id} value={preset.id}>
+                {preset.name} ({preset.problem_count} problems)
+              </option>
+            ))}
+          </Select>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Preset
-              </label>
-              <select
-                value={selectedPreset}
-                onChange={(e) => setSelectedPreset(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Choose a preset...</option>
-                {presets.map((preset) => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.name} ({preset.problem_count} problems)
-                  </option>
-                ))}
-              </select>
-            </div>
+          <Select
+            label="Import to Collection"
+            value={importCollectionId}
+            onChange={(e) => setImportCollectionId(e.target.value)}
+          >
+            <option value="">Choose a collection...</option>
+            {collections.map((collection) => (
+              <option key={collection.id} value={collection.id}>
+                {collection.name}
+              </option>
+            ))}
+          </Select>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Import to Collection
-              </label>
-              <select
-                value={importCollectionId}
-                onChange={(e) => setImportCollectionId(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Choose a collection...</option>
-                {collections.map((collection) => (
-                  <option key={collection.id} value={collection.id}>
-                    {collection.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowImportModal(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleImportPreset}
-                disabled={!selectedPreset || !importCollectionId}
-                className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Import
-              </button>
-            </div>
+          <div className="flex gap-2 justify-end pt-2">
+            <Button variant="secondary" onClick={() => setShowImportModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleImportPreset}
+              disabled={!selectedPreset || !importCollectionId}
+            >
+              Import
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }
