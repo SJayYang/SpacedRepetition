@@ -26,9 +26,9 @@ export default function ItemFilters({ collections, patterns, filters, onChange, 
   const hasActiveFilters = collection || status || difficulty || pattern || search
 
   return (
-    <div className="bg-white shadow rounded-lg p-4 mb-6 border border-gray-200">
+    <div className="surface p-4 mb-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</h3>
+        <h3 className="text-sm font-semibold text-gray-800">Filters</h3>
         {hasActiveFilters && (
           <button type="button" onClick={onClear} className="text-sm text-primary-600 hover:text-primary-700 font-medium">
             Clear All

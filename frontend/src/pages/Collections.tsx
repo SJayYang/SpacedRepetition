@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { ArrowDownToLine, ChevronRight, FolderClosed, Plus } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { collectionsAPI, presetsAPI } from '../api/client'
 import { Collection, Preset } from '../types'
 import Modal from '../components/common/Modal'
@@ -7,14 +8,24 @@ import Input from '../components/common/Input'
 import Select from '../components/common/Select'
 import Button from '../components/common/Button'
 import GridList from '../components/common/GridList'
+import PageHeader from '../components/common/PageHeader'
 
 export default function Collections() {
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [collections, setCollections] = useState<Collection[]>([])
   const [presets, setPresets] = useState<Preset[]>([])
   const [loading, setLoading] = useState(true)
-  const [showCreateForm, setShowCreateForm] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
+  const importRequested = searchParams.has('import')
+  const showCreateForm = searchParams.has('create')
+  const showImportModal = importRequested && !showCreateForm
+  const setPanel = (panel: 'import' | 'create' | 'create-and-import' | null) => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('create')
+    next.delete('import')
+    if (panel === 'create' || panel === 'create-and-import') next.set('create', '1')
+    if (panel === 'import' || panel === 'create-and-import') next.set('import', '1')
+    setSearchParams(next, { replace: true })
+  }
   const [newCollectionName, setNewCollectionName] = useState('')
   const [selectedPreset, setSelectedPreset] = useState<string>('')
   const [importCollectionId, setImportCollectionId] = useState<string>('')
@@ -50,9 +61,10 @@ export default function Collections() {
         item_type: 'leetcode',
       })
       // Optimistically add to collections list
-      setCollections([...collections, newCollection])
+      setCollections(current => [...current, newCollection])
+      if (importRequested) setImportCollectionId(newCollection.id)
       setNewCollectionName('')
-      setShowCreateForm(false)
+      setPanel(importRequested ? 'import' : null)
     } catch (err) {
       console.error('Error creating collection:', err)
       alert('Failed to create collection')
@@ -65,7 +77,7 @@ export default function Collections() {
     try {
       await presetsAPI.import(selectedPreset, importCollectionId)
       alert('Preset imported successfully!')
-      setShowImportModal(false)
+      setPanel(null)
       setSelectedPreset('')
       setImportCollectionId('')
     } catch (err) {
@@ -80,46 +92,39 @@ export default function Collections() {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Collections</h1>
-          <p className="text-gray-600 mt-1">
-            {collections.length} {collections.length === 1 ? 'collection' : 'collections'}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowImportModal(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-          >
-            Import Preset
-          </button>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-          >
-            Create Collection
-          </button>
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        title="Collections"
+        subtitle={`${collections.length} ${collections.length === 1 ? 'collection' : 'collections'}`}
+        actions={
+          <>
+            <button type="button" className="ui-button ui-button-secondary" onClick={() => setPanel('import')}>
+              <ArrowDownToLine size={16} aria-hidden="true" /> Import preset
+            </button>
+            <button type="button" className="ui-button ui-button-primary" onClick={() => setPanel('create')}>
+              <Plus size={17} aria-hidden="true" /> New collection
+            </button>
+          </>
+        }
+      />
 
       {/* Create Form */}
       {showCreateForm && (
-        <div className="mb-6 bg-white shadow rounded-lg p-6 border border-gray-200">
+        <div className="surface mb-6 p-5 sm:p-6">
           <h3 className="text-lg font-semibold mb-4">Create New Collection</h3>
-          <form onSubmit={handleCreateCollection} className="flex gap-4">
+          <form onSubmit={handleCreateCollection} className="flex flex-wrap items-end gap-2 sm:flex-nowrap">
             <Input
               type="text"
               value={newCollectionName}
               onChange={(e) => setNewCollectionName(e.target.value)}
-              placeholder="Collection name"
+              label="Collection name"
+              placeholder="e.g., Interview prep"
               className="flex-1"
             />
             <Button type="submit" variant="primary">
               Create
             </Button>
-            <Button type="button" variant="secondary" onClick={() => setShowCreateForm(false)}>
+            <Button type="button" variant="secondary" onClick={() => setPanel(importRequested ? 'import' : null)}>
               Cancel
             </Button>
           </form>
@@ -130,39 +135,23 @@ export default function Collections() {
       {/* Collections List */}
       <GridList columns={3}>
         {collections.map((collection) => (
-          <div
-            key={collection.id}
-            onClick={() => navigate(`/collections/${collection.id}`)}
-            className="bg-white shadow rounded-lg p-6 cursor-pointer hover:shadow-xl transition-shadow border border-gray-200 hover:border-primary-300"
-          >
-            <div className="flex items-start justify-between mb-2">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {collection.name}
-              </h3>
-              <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-            {collection.description && (
-              <p className="text-gray-600 text-sm mb-4">{collection.description}</p>
-            )}
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Type: {collection.item_type}
-              </div>
-              {collection.is_default && (
-                <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-medium">
-                  Default
-                </span>
-              )}
-            </div>
-          </div>
+          <Link key={collection.id} to={`/collections/${collection.id}`} className="surface collection-tile">
+            <span className="collection-tile-icon"><FolderClosed size={19} aria-hidden="true" /></span>
+            <span className="collection-tile-content">
+              <strong>{collection.name}</strong>
+              {collection.description && <span>{collection.description}</span>}
+              <span>{collection.item_type === 'leetcode' ? 'LeetCode' : collection.item_type}{collection.is_default && ' · Default'}</span>
+            </span>
+            <ChevronRight size={17} aria-hidden="true" />
+          </Link>
         ))}
       </GridList>
 
       {collections.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">No collections yet. Create one to get started!</p>
+        <div className="surface empty-panel">
+          <FolderClosed size={25} aria-hidden="true" />
+          <h2>No collections yet</h2>
+          <p>Create a collection to group problems or import a preset.</p>
         </div>
       )}
 
@@ -170,7 +159,7 @@ export default function Collections() {
       {/* Import Modal */}
       <Modal
         isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
+        onClose={() => setPanel(null)}
         title="Import Preset List"
       >
         <div className="space-y-4">
@@ -200,8 +189,12 @@ export default function Collections() {
             ))}
           </Select>
 
+          {collections.length === 0 && (
+            <p className="text-gray-600">You’ll need a collection to import into. <button type="button" className="font-semibold text-primary-700 underline" onClick={() => setPanel('create-and-import')}>Create a collection</button></p>
+          )}
+
           <div className="flex gap-2 justify-end pt-2">
-            <Button variant="secondary" onClick={() => setShowImportModal(false)}>
+            <Button variant="secondary" onClick={() => setPanel(null)}>
               Cancel
             </Button>
             <Button

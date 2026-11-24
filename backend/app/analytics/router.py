@@ -1,7 +1,8 @@
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from supabase import Client
 
 from app.dependencies import get_authenticated_supabase, get_current_user
@@ -91,9 +92,15 @@ def get_retention_rate(
 @router.get("/heatmap")
 def get_heatmap(
     days: int = Query(default=365, le=365),
+    time_zone: str = "UTC",
     user: dict = Depends(get_current_user),
     supabase: Client = Depends(get_authenticated_supabase),
 ):
+    try:
+        zone = timezone.utc if time_zone == "UTC" else ZoneInfo(time_zone)
+    except (ZoneInfoNotFoundError, ValueError) as error:
+        raise HTTPException(status_code=422, detail="Invalid time zone") from error
+
     start = datetime.now(timezone.utc) - timedelta(days=days)
     reviews = (
         supabase.table("reviews")
@@ -103,7 +110,10 @@ def get_heatmap(
         .execute()
         .data
     )
-    counts = Counter(review["reviewed_at"][:10] for review in reviews)
+    counts = Counter(
+        datetime.fromisoformat(review["reviewed_at"]).astimezone(zone).date().isoformat()
+        for review in reviews
+    )
     return [{"date": day, "count": count} for day, count in sorted(counts.items())]
 
 

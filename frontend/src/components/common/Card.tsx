@@ -20,12 +20,12 @@ export default function Card({
   padding = 'md'
 }: CardProps) {
   const paddingClass = paddingClasses[padding]
-  const hoverClass = hoverable ? 'hover:shadow-xl transition-shadow cursor-pointer hover:border-primary-300' : ''
+  const hoverClass = hoverable ? 'transition-colors hover:border-primary-300' : ''
   const clickable = onClick ? 'cursor-pointer' : ''
 
   return (
     <div
-      className={`bg-white shadow rounded-lg border border-gray-200 ${paddingClass} ${hoverClass} ${clickable} ${className}`}
+      className={`surface ${paddingClass} ${hoverClass} ${clickable} ${className}`}
       onClick={onClick}
     >
       {children}

@@ -20,8 +20,8 @@ type ButtonProps = ButtonAsButton | ButtonAsLink
 
 const variantClasses: Record<string, string> = {
   primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
-  secondary: 'bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-gray-500',
-  success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
+  secondary: 'bg-white border-gray-200 text-gray-800 hover:bg-gray-50 focus:ring-primary-500',
+  success: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500',
   danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
   ghost: 'bg-transparent text-primary-600 hover:bg-primary-50 focus:ring-primary-500',
 }
@@ -48,7 +48,7 @@ export default function Button({
 
   const sharedClassName = `
     inline-flex items-center justify-center gap-2
-    rounded-md font-medium
+    rounded-lg border border-transparent font-semibold
     transition-colors duration-150
     focus:outline-none focus:ring-2 focus:ring-offset-2
     ${variantClass}

@@ -1,3 +1,4 @@
+import PageHeader from '../components/common/PageHeader'
 import { useEffect, useState } from 'react'
 import { authAPI } from '../api/client'
 import type { Profile, ProfileSettings } from '../types'
@@ -54,11 +55,11 @@ export default function Settings() {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0 max-w-2xl">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Settings</h1>
+    <div className="max-w-2xl">
+      <PageHeader title="Settings" />
 
       {/* Profile Info */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="surface p-5 sm:p-6 mb-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile</h2>
         <div className="space-y-2">
           <div>
@@ -75,7 +76,7 @@ export default function Settings() {
       </div>
 
       {/* Settings Form */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="surface p-5 sm:p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Preferences</h2>
         <form onSubmit={handleSave} className="space-y-4">
           <div>
@@ -150,7 +151,7 @@ export default function Settings() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full px-6 py-3 bg-primary-600 text-white rounded-md hover:bg-primary-700 font-medium disabled:opacity-50"
+            className="ui-button ui-button-primary"
           >
             {saving ? 'Saving...' : 'Save Settings'}
           </button>

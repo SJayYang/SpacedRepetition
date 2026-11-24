@@ -1,16 +1,27 @@
+import { LibraryBig, Plus, Search } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
 import { useEffect, useState, useMemo } from 'react'
 import { itemsAPI, collectionsAPI } from '../api/client'
 import { Item, Collection } from '../types'
 import AddItemForm from '../components/items/AddItemForm'
 import ItemCard from '../components/items/ItemCard'
 import ItemFilters from '../components/items/ItemFilters'
+import PageHeader from '../components/common/PageHeader'
 import { useItemFilters } from '../components/items/useItemFilters'
 
 export default function Items() {
   const [items, setItems] = useState<Item[]>([])
   const [collections, setCollections] = useState<Collection[]>([])
   const [loading, setLoading] = useState(true)
-  const [showAddForm, setShowAddForm] = useState(false)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const showAddForm = searchParams.has('add')
+
+  const setShowAddForm = (open: boolean) => {
+    const next = new URLSearchParams(searchParams)
+    if (open) next.set('add', '1')
+    else next.delete('add')
+    setSearchParams(next, { replace: true })
+  }
 
   const { filters, setFilters, patterns, filteredItems, clearFilters } = useItemFilters(items)
 
@@ -44,21 +55,16 @@ export default function Items() {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Items</h1>
-          <p className="text-gray-600 mt-1">
-            Showing {filteredItems.length} of {items.length} items
-          </p>
-        </div>
-        <button
-          onClick={() => setShowAddForm(!showAddForm)}
-          className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-        >
-          {showAddForm ? 'Cancel' : 'Add Item'}
-        </button>
-      </div>
+    <div>
+      <PageHeader
+        title="Problems"
+        subtitle={`Showing ${filteredItems.length} of ${items.length} problems`}
+        actions={
+          <button type="button" className={`ui-button ${showAddForm ? 'ui-button-secondary' : 'ui-button-primary'}`} onClick={() => setShowAddForm(!showAddForm)}>
+            {showAddForm ? 'Cancel' : <><Plus size={17} aria-hidden="true" /> New problem</>}
+          </button>
+        }
+      />
 
       <AddItemForm collections={collections} hidden={!showAddForm} onCreated={handleItemCreated} />
 
@@ -86,34 +92,20 @@ export default function Items() {
         ))}
       </div>
 
-      {/* Empty States */}
       {items.length === 0 && !showAddForm && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p className="text-gray-600 mb-4 mt-4">No items yet. Add your first problem to get started!</p>
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
-          >
-            Add Problem
-          </button>
+        <div className="surface empty-panel">
+          <LibraryBig size={24} aria-hidden="true" />
+          <h2>No problems yet</h2>
+          <p>Add a problem to start your library.</p>
+          <button type="button" onClick={() => setShowAddForm(true)} className="ui-button ui-button-secondary">Add problem</button>
         </div>
       )}
 
       {items.length > 0 && filteredItems.length === 0 && (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <p className="text-gray-600 mb-4 mt-4">No items match your filters.</p>
-          <button
-            onClick={clearFilters}
-            className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-          >
-            Clear Filters
-          </button>
+        <div className="surface empty-panel">
+          <Search size={24} aria-hidden="true" />
+          <h2>No matching problems</h2>
+          <button type="button" onClick={clearFilters} className="ui-button ui-button-secondary">Clear filters</button>
         </div>
       )}
     </div>

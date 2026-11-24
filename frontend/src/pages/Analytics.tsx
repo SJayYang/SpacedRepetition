@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { analyticsAPI } from '../api/client'
+import PageHeader from '../components/common/PageHeader'
 import type { RetentionPoint, TopicPerformance } from '../types'
 
 export default function Analytics() {
@@ -32,13 +33,12 @@ export default function Analytics() {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Analytics</h1>
+    <div>
+      <PageHeader title="Analytics" />
 
-      {/* Retention Rate */}
-      <div className="bg-white shadow rounded-lg p-6 mb-6">
+      <div className="surface p-5 sm:p-6 mb-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Retention Rate (Last 30 Days)
+          Retention over the last 30 days
         </h2>
         {retention.length > 0 ? (
           <div className="space-y-2">
@@ -46,28 +46,26 @@ export default function Analytics() {
               <div key={day.date} className="flex items-center">
                 <div className="w-24 text-sm text-gray-600">{day.date}</div>
                 <div className="flex-1 mx-4">
-                  <div className="w-full bg-gray-200 rounded-full h-6">
+                  <div className="w-full bg-gray-100 rounded-full h-3">
                     <div
-                      className="bg-primary-600 h-6 rounded-full flex items-center justify-end pr-2"
+                      className="bg-primary-500 h-3 rounded-full"
                       style={{ width: `${day.rate}%` }}
-                    >
-                      <span className="text-xs text-white font-medium">{day.rate}%</span>
-                    </div>
+                    />
                   </div>
                 </div>
                 <div className="w-20 text-sm text-gray-600 text-right">
-                  {day.total_reviews} reviews
+                  {day.rate}%
+                  <span className="block text-xs">{day.total_reviews} {day.total_reviews === 1 ? 'review' : 'reviews'}</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-gray-500">No review data yet. Complete some reviews to see retention stats!</p>
+          <p className="text-gray-500">Complete a review to see retention here.</p>
         )}
       </div>
 
-      {/* Topics Performance */}
-      <div className="bg-white shadow rounded-lg p-6">
+      <div className="surface p-5 sm:p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Performance by Topic
         </h2>
@@ -81,13 +79,9 @@ export default function Analytics() {
                     {topic.total_reviews} reviews
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-4">
+                <div className="w-full bg-gray-100 rounded-full h-2.5">
                   <div
-                    className={`h-4 rounded-full ${
-                      topic.success_rate >= 75 ? 'bg-green-500' :
-                      topic.success_rate >= 50 ? 'bg-yellow-500' :
-                      'bg-red-500'
-                    }`}
+                    className="h-2.5 rounded-full bg-primary-500"
                     style={{ width: `${topic.success_rate}%` }}
                   />
                 </div>
@@ -98,7 +92,7 @@ export default function Analytics() {
             ))}
           </div>
         ) : (
-          <p className="text-gray-500">No topic data yet. Add topics to your problems to see performance breakdown!</p>
+          <p className="text-gray-500">Add topics to your problems to see performance by topic.</p>
         )}
       </div>
     </div>

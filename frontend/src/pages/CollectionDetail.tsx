@@ -115,7 +115,7 @@ export default function CollectionDetail() {
   }
 
   return (
-    <div className="px-4 py-6 sm:px-0">
+    <div>
       {/* Header */}
       <div className="mb-6">
         <Button
@@ -136,7 +136,7 @@ export default function CollectionDetail() {
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{collection.name}</h1>
+                <h1 className="text-3xl font-semibold tracking-tight text-gray-900">{collection.name}</h1>
                 <IconMenu
                   ariaLabel="Collection actions"
                   items={[
@@ -230,7 +230,7 @@ export default function CollectionDetail() {
           ))}
         </div>
       ) : items.length > 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="surface empty-panel">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>

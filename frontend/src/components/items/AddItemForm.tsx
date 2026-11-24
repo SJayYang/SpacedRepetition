@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useState, type FormEvent } from 'react'
 import { itemsAPI } from '../../api/client'
 import type { Collection, Item } from '../../types'
@@ -53,8 +54,11 @@ export default function AddItemForm({ collections, hidden, onCreated }: AddItemF
   }
 
   return (
-    <div hidden={hidden} className="mb-6 bg-white shadow rounded-lg p-6 border border-gray-200">
-      <h3 className="text-lg font-semibold mb-4">Add New Problem</h3>
+    <div hidden={hidden} className="surface mb-6 p-5 sm:p-6">
+      <h3 className="text-lg font-semibold mb-4">New problem</h3>
+      {collections.length === 0 && (
+        <p className="mb-4 text-gray-600">A problem belongs to a collection. <Link to="/collections?create=1" className="font-semibold text-primary-700 underline">Create a collection</Link> to continue.</p>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <Select name="collection" label="Collection *" defaultValue={collections[0]?.id ?? ''} required>
           <option value="">Select a collection</option>
@@ -78,7 +82,7 @@ export default function AddItemForm({ collections, hidden, onCreated }: AddItemF
             placeholder="Your notes about this problem..."
           />
         </label>
-        <Button type="submit" size="lg" fullWidth disabled={submitting}>
+        <Button type="submit" size="lg" fullWidth disabled={submitting || collections.length === 0}>
           {submitting ? 'Adding…' : 'Add Problem'}
         </Button>
       </form>

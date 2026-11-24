@@ -85,7 +85,7 @@ export const reviewsAPI = {
 export const analyticsAPI = {
   getSummary: () => request<DashboardStats>('/api/analytics/summary'),
   getRetention: (days = 30) => request<RetentionPoint[]>(withQuery('/api/analytics/retention', { days })),
-  getHeatmap: (days = 365) => request<CountByDate[]>(withQuery('/api/analytics/heatmap', { days })),
+  getHeatmap: (days = 365, time_zone?: string) => request<CountByDate[]>(withQuery('/api/analytics/heatmap', { days, time_zone })),
   getTopics: () => request<TopicPerformance[]>('/api/analytics/topics'),
 }
 

@@ -1,3 +1,4 @@
+import { Check, Inbox } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { reviewsAPI, collectionsAPI } from '../api/client'
@@ -154,9 +155,9 @@ export default function ReviewSession() {
 
   if (sessionComplete || !currentItem) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-12">
+      <div className="max-w-2xl mx-auto">
         <Card padding="lg" className="text-center">
-          <div className="text-6xl mb-4">🎉</div>
+          <span className="library-icon mx-auto mb-4">{reviewsCompleted > 0 ? <Check size={21} aria-hidden="true" /> : <Inbox size={21} aria-hidden="true" />}</span>
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
             {reviewsCompleted > 0 ? 'Session Complete!' : 'No items due for review'}
           </h2>
@@ -169,7 +170,7 @@ export default function ReviewSession() {
               No items due for review in {collectionName}. Check back later!
             </p>
           )}
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
             <Button
               onClick={handleChangeCollection}
               variant="secondary"
@@ -191,10 +192,10 @@ export default function ReviewSession() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6">
+    <div className="max-w-3xl mx-auto">
       {/* Restored Session Message */}
       {showRestoredMessage && (
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-2 text-blue-900">
+        <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg flex items-center gap-2 text-primary-900">
           <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -232,7 +233,7 @@ export default function ReviewSession() {
       </div>
 
       {/* Current Item */}
-      <Card padding="lg" className="shadow-lg">
+      <Card padding="lg">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
             {currentItem.items.title}
@@ -287,7 +288,7 @@ export default function ReviewSession() {
               href={currentItem.items.external_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
+              className="ui-button ui-button-secondary"
             >
               Open in LeetCode →
             </a>
@@ -343,17 +344,17 @@ function RatingButton({ label, description, color, onClick, disabled }: {
   disabled: boolean
 }) {
   const colorClasses: Record<string, string> = {
-    red: 'bg-red-50 hover:bg-red-100 border-red-200 text-red-900',
-    orange: 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-orange-900',
-    blue: 'bg-blue-50 hover:bg-blue-100 border-blue-200 text-blue-900',
-    green: 'bg-green-50 hover:bg-green-100 border-green-200 text-green-900',
+    red: 'bg-white hover:bg-red-50 border-gray-200 hover:border-red-200 text-gray-900',
+    orange: 'bg-white hover:bg-orange-50 border-gray-200 hover:border-orange-200 text-gray-900',
+    blue: 'bg-white hover:bg-primary-50 border-gray-200 hover:border-primary-200 text-gray-900',
+    green: 'bg-white hover:bg-green-50 border-gray-200 hover:border-green-200 text-gray-900',
   }
 
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`p-4 border-2 rounded-lg transition-all ${colorClasses[color]} disabled:opacity-50 disabled:cursor-not-allowed`}
+      className={`p-4 border rounded-lg transition-colors ${colorClasses[color]} disabled:opacity-50 disabled:cursor-not-allowed`}
     >
       <div className="font-semibold text-lg">{label}</div>
       <div className="text-sm opacity-75">{description}</div>

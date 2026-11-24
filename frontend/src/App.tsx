@@ -1,3 +1,4 @@
+import type { Session } from '@supabase/supabase-js'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
@@ -12,7 +13,7 @@ import Settings from './pages/Settings'
 import Layout from './components/Layout'
 
 function App() {
-  const [session, setSession] = useState<any>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -44,7 +45,7 @@ function App() {
         <Route path="/login" element={!session ? <Login /> : <Navigate to="/dashboard" />} />
         <Route
           path="/"
-          element={session ? <Layout /> : <Navigate to="/login" />}
+          element={session ? <Layout email={session.user.email} /> : <Navigate to="/login" />}
         >
           <Route index element={<Navigate to="/dashboard" />} />
           <Route path="dashboard" element={<Dashboard />} />

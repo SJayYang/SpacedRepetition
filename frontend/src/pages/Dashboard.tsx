@@ -1,159 +1,147 @@
+import { ArrowDownToLine, ArrowRight, Bell, CalendarDays, Check, ChevronRight, Layers2, Plus, RotateCcw } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { analyticsAPI } from '../api/client'
-import { DashboardStats } from '../types'
+import type { DashboardStats } from '../types'
 
-export default function Dashboard() {
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const number = new Intl.NumberFormat()
+const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' })
+const fullDate = new Intl.DateTimeFormat(undefined, { dateStyle: 'full' })
+type ActivityDay = { date: string; count: number }
 
-  useEffect(() => {
-    loadStats()
-  }, [])
+function dateKey(date: Date) {
+  return [date.getFullYear(), date.getMonth() + 1, date.getDate()]
+    .map(part => String(part).padStart(2, '0')).join('-')
+}
 
-  const loadStats = async () => {
-    try {
-      setLoading(true)
-      const data = await analyticsAPI.getSummary()
-      setStats(data)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
-    } finally {
-      setLoading(false)
+function studyWeek(activity: ActivityDay[]) {
+  const today = new Date()
+  const todayKey = dateKey(today)
+  const monday = new Date(today)
+  monday.setDate(today.getDate() - (today.getDay() + 6) % 7)
+  const counts = new Map(activity.map(day => [day.date, day.count]))
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(monday)
+    date.setDate(monday.getDate() + index)
+    const key = dateKey(date)
+    return {
+      key,
+      weekday: weekday.format(date),
+      count: counts.get(key) ?? 0,
+      isToday: key === todayKey,
     }
-  }
+  })
+}
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-64">Loading...</div>
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-        <p className="text-red-800">Error: {error}</p>
-      </div>
-    )
-  }
+function ReviewActivity({ activity }: { activity: ActivityDay[] | null | undefined }) {
+  const week = studyWeek(activity ?? [])
+  const total = week.reduce((sum, day) => sum + day.count, 0)
+  const max = Math.max(1, ...week.map(day => day.count))
 
   return (
-    <div className="px-4 py-6 sm:px-0">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Dashboard</h1>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 mb-8">
-        <StatCard
-          title="Due Today"
-          value={stats?.due_count || 0}
-          color="primary"
-          icon="📚"
-        />
-        <StatCard
-          title="Reviews Today"
-          value={stats?.reviews_today || 0}
-          color="green"
-          icon="✅"
-        />
-        <StatCard
-          title="Current Streak"
-          value={`${stats?.streak || 0} days`}
-          color="orange"
-          icon="🔥"
-        />
-        <StatCard
-          title="Total Items"
-          value={stats?.total_items || 0}
-          color="blue"
-          icon="📊"
-        />
-        <StatCard
-          title="Retention Rate"
-          value={`${stats?.retention_rate || 0}%`}
-          color="purple"
-          icon="🎯"
-        />
-        {stats && stats.overdue_count > 0 && (
-          <StatCard
-            title="Overdue"
-            value={stats.overdue_count}
-            color="red"
-            icon="⚠️"
-          />
-        )}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white shadow rounded-lg p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Link
-            to="/review"
-            className="flex items-center justify-center px-6 py-4 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 transition-colors"
-          >
-            Start Review Session
-          </Link>
-          <Link
-            to="/items"
-            className="flex items-center justify-center px-6 py-4 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-          >
-            Add New Problem
-          </Link>
+    <section className="dashboard-activity surface" aria-labelledby="activity-heading">
+      <div className="dashboard-activity-heading">
+        <div>
+          <h2 id="activity-heading">Review activity</h2>
+          <p>This week</p>
         </div>
+        <Link to="/analytics" className="icon-link" aria-label="View analytics">
+          <ArrowRight size={17} aria-hidden="true" />
+        </Link>
       </div>
-
-      {/* Welcome Message */}
-      {stats && stats.total_items === 0 && (
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">
-            Welcome to SpaceRep!
-          </h3>
-          <p className="text-blue-800 mb-4">
-            Get started by importing a preset list or adding your first problem.
-          </p>
-          <div className="flex gap-4">
-            <Link
-              to="/collections"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Import Preset List
-            </Link>
-            <Link
-              to="/items"
-              className="px-4 py-2 bg-white text-blue-600 border border-blue-600 rounded-md hover:bg-blue-50 transition-colors"
-            >
-              Add First Problem
-            </Link>
-          </div>
-        </div>
-      )}
-    </div>
+      <p className="activity-total"><strong>{activity ? number.format(total) : '—'}</strong> reviews</p>
+      {activity ? (
+        <ul className="activity-chart" aria-label="Reviews by day">
+          {week.map(day => (
+            <li key={day.key} className={day.isToday ? 'today' : undefined}>
+              <span className="activity-bar" title={`${day.weekday} · ${day.count} reviews`}>
+                <span style={{ height: `${day.count / max * 100}%` }} />
+              </span>
+              <span aria-hidden="true">{day.weekday}</span>
+              <span className="sr-only">{day.weekday}: {day.count} reviews</span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="muted-text">{activity === null ? 'Review activity is unavailable.' : 'Loading activity…'}</p>}
+    </section>
   )
 }
 
-function StatCard({ title, value, color, icon }: {
-  title: string
-  value: string | number
-  color: string
-  icon: string
-}) {
-  const colorClasses: Record<string, string> = {
-    primary: 'bg-primary-50 text-primary-700 border-primary-200',
-    green: 'bg-green-50 text-green-700 border-green-200',
-    orange: 'bg-orange-50 text-orange-700 border-orange-200',
-    blue: 'bg-blue-50 text-blue-700 border-blue-200',
-    purple: 'bg-purple-50 text-purple-700 border-purple-200',
-    red: 'bg-red-50 text-red-700 border-red-200',
-  }
+export default function Dashboard() {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [activity, setActivity] = useState<ActivityDay[] | null>()
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    analyticsAPI.getSummary()
+      .then(result => { if (active) setStats(result) })
+      .catch(() => { if (active) setError(true) })
+    analyticsAPI.getHeatmap(7, Intl.DateTimeFormat().resolvedOptions().timeZone)
+      .then(result => { if (active) setActivity(result) })
+      .catch(() => { if (active) setActivity(null) })
+    return () => { active = false }
+  }, [])
+
+  const due = stats?.due_count ?? 0
+  const hasItems = Boolean(stats?.total_items)
 
   return (
-    <div className={`border rounded-lg p-6 ${colorClasses[color] || colorClasses.primary}`}>
-      <div className="flex items-center justify-between">
+    <div className="dashboard">
+      <div className="dashboard-heading">
         <div>
-          <p className="text-sm font-medium opacity-75">{title}</p>
-          <p className="text-2xl font-bold mt-1">{value}</p>
+          <p className="dashboard-date"><CalendarDays size={15} aria-hidden="true" /> {fullDate.format(new Date())}</p>
+          <h1>Dashboard</h1>
         </div>
-        <div className="text-3xl">{icon}</div>
+        <Link to="/items?add=1" className="ui-button ui-button-primary"><Plus size={17} aria-hidden="true" /> New problem</Link>
       </div>
+
+      {error && <p className="dashboard-error" role="alert">Study statistics couldn’t be loaded. Refresh the page to try again.</p>}
+
+      <div className="dashboard-feature-row">
+        <section className="review-panel" aria-labelledby="queue-heading">
+          <div className="review-orbit" aria-hidden="true"><span /><span /><span /><i /></div>
+          <span className="review-panel-icon"><RotateCcw size={19} aria-hidden="true" /></span>
+          <div className="review-panel-content">
+            <h2 id="queue-heading">Review queue</h2>
+            <p className="review-count">
+              <strong>{stats ? number.format(due) : '—'}</strong>
+              <span>{due === 1 ? 'problem due' : 'problems due'}</span>
+            </p>
+            {Boolean(stats?.overdue_count) && (
+              <p className="review-overdue"><Bell size={14} aria-hidden="true" /> {stats?.overdue_count} overdue</p>
+            )}
+            <Link to="/review" className="ui-button review-button">Start review <ArrowRight size={16} aria-hidden="true" /></Link>
+          </div>
+        </section>
+        <ReviewActivity activity={activity} />
+      </div>
+
+      <section className="dashboard-section" aria-labelledby="metrics-heading">
+        <h2 id="metrics-heading">Study overview</h2>
+        <dl className="dashboard-metrics surface">
+          <div><dt>Reviewed today</dt><dd>{stats ? number.format(stats.reviews_today) : '—'}</dd></div>
+          <div><dt>Current streak</dt><dd>{stats ? number.format(stats.streak) : '—'} <span>{stats?.streak === 1 ? 'day' : 'days'}</span></dd></div>
+          <div><dt>Retention rate</dt><dd>{stats ? `${number.format(stats.retention_rate)}%` : '—'}</dd></div>
+          <div><dt>Problems saved</dt><dd>{stats ? number.format(stats.total_items) : '—'}</dd></div>
+        </dl>
+      </section>
+
+      <section className="dashboard-section" aria-labelledby="library-heading">
+        <h2 id="library-heading">Your library</h2>
+        <div className="dashboard-library surface">
+          <div className="library-summary">
+            <span className="library-icon">{hasItems ? <Check size={19} aria-hidden="true" /> : <Layers2 size={19} aria-hidden="true" />}</span>
+            <div>
+              <h3>{stats && !hasItems ? 'Add your first problem' : 'Problem library'}</h3>
+              <p>{stats && !hasItems ? 'Add a problem manually or import a curated list.' : 'Browse and manage your saved problems.'}</p>
+            </div>
+          </div>
+          <Link to={stats && !hasItems ? '/collections?import=1' : '/items'} className="ui-button ui-button-secondary">
+            {stats && !hasItems ? <><ArrowDownToLine size={16} aria-hidden="true" /> Browse presets</> : <>View problems <ChevronRight size={16} aria-hidden="true" /></>}
+          </Link>
+        </div>
+      </section>
     </div>
   )
 }

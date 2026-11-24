@@ -1,17 +1,19 @@
+import type { ReactNode } from 'react'
+
 interface PageHeaderProps {
   title: string
   subtitle?: string
-  actions?: React.ReactNode
+  actions?: ReactNode
 }
 
 export default function PageHeader({ title, subtitle, actions }: PageHeaderProps) {
   return (
-    <div className="flex justify-between items-center mb-6">
+    <header className="page-heading">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">{title}</h1>
-        {subtitle && <p className="text-gray-600 mt-1">{subtitle}</p>}
+        <h1>{title}</h1>
+        {subtitle && <p>{subtitle}</p>}
       </div>
-      {actions && <div className="flex gap-2">{actions}</div>}
-    </div>
+      {actions && <div className="page-actions">{actions}</div>}
+    </header>
   )
 }

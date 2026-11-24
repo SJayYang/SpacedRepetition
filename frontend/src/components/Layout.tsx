@@ -1,63 +1,77 @@
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { ChartNoAxesColumn, ChevronsUpDown, FolderClosed, LayoutDashboard, LibraryBig, LogOut, RotateCcw, Settings } from 'lucide-react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { signOut } from '../lib/supabase'
+import WorkspaceBrand from './WorkspaceBrand'
 
-export default function Layout() {
+const studyLinks = [
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/review', label: 'Review', icon: RotateCcw },
+  { path: '/collections', label: 'Collections', icon: FolderClosed },
+  { path: '/items', label: 'Problems', icon: LibraryBig },
+  { path: '/analytics', label: 'Analytics', icon: ChartNoAxesColumn },
+]
+const settingsLink = { path: '/settings', label: 'Settings', icon: Settings }
+const allLinks = [...studyLinks, settingsLink]
+
+function NavigationLink({ path, label, icon: Icon }: typeof settingsLink) {
+  return (
+    <NavLink to={path} className="workspace-nav-link">
+      <Icon size={17} strokeWidth={1.75} aria-hidden="true" />
+      <span>{label}</span>
+    </NavLink>
+  )
+}
+
+export default function Layout({ email }: { email?: string }) {
   const location = useLocation()
+  const section = allLinks.find(({ path }) => location.pathname.startsWith(path))
+  const account = email?.split('@')[0] || 'Account'
 
   const handleSignOut = async () => {
     await signOut()
     window.location.href = '/login'
   }
 
-  const navItems = [
-    { path: '/dashboard', label: 'Dashboard' },
-    { path: '/review', label: 'Review' },
-    { path: '/collections', label: 'Collections' },
-    { path: '/items', label: 'Items' },
-    { path: '/analytics', label: 'Analytics' },
-    { path: '/settings', label: 'Settings' },
-  ]
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-2xl font-bold text-primary-600">SpaceRep</h1>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
-                      location.pathname === item.path
-                        ? 'border-primary-500 text-gray-900'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center">
-              <button
-                onClick={handleSignOut}
-                className="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+    <div className="workspace">
+      <a className="workspace-skip" href="#workspace-content">Skip to content</a>
+      <aside className="workspace-sidebar">
+        <Link to="/dashboard" className="workspace-logo"><WorkspaceBrand /></Link>
+        <nav className="workspace-nav" aria-label="Main navigation">
+          {studyLinks.map(entry => <NavigationLink key={entry.path} {...entry} />)}
+          <div className="workspace-nav-separator" />
+          <NavigationLink {...settingsLink} />
+        </nav>
+        <details className="workspace-account">
+          <summary>
+            <span className="workspace-avatar" aria-hidden="true">{account[0].toUpperCase()}</span>
+            <span className="workspace-account-label">
+              <strong>Account</strong>
+              {email && <span title={email}>{email}</span>}
+            </span>
+            <ChevronsUpDown size={15} aria-hidden="true" />
+          </summary>
+          <button type="button" onClick={handleSignOut}><LogOut size={16} aria-hidden="true" /> Sign out</button>
+        </details>
+      </aside>
 
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <Outlet />
-      </main>
+      <div className="workspace-body">
+        <header className="workspace-topbar">
+          <div className="workspace-topbar-inner">
+            <Link to="/dashboard" className="workspace-mobile-brand"><WorkspaceBrand /></Link>
+            <div className="workspace-breadcrumb">
+              <span>Workspace</span><span aria-hidden="true">/</span><strong>{section?.label}</strong>
+            </div>
+            <button className="workspace-mobile-signout" type="button" onClick={handleSignOut} aria-label="Sign out">
+              <LogOut size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <nav className="workspace-mobile-nav" aria-label="Main navigation">
+            {allLinks.map(entry => <NavigationLink key={entry.path} {...entry} />)}
+          </nav>
+        </header>
+        <main id="workspace-content" className="workspace-content" tabIndex={-1}><Outlet /></main>
+      </div>
     </div>
   )
 }
