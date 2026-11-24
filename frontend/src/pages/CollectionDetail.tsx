@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { collectionsAPI, itemsAPI } from '../api/client'
 import { Collection, Item } from '../types'
 import ItemCard from '../components/items/ItemCard'
 import ItemFilters from '../components/items/ItemFilters'
+import { useItemFilters } from '../components/items/useItemFilters'
 import Badge from '../components/common/Badge'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
@@ -23,42 +24,36 @@ export default function CollectionDetail() {
   const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  // Filter states
-  const [selectedStatus, setSelectedStatus] = useState('')
-  const [selectedDifficulty, setSelectedDifficulty] = useState('')
-  const [selectedPattern, setSelectedPattern] = useState('')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('created_desc')
+  const { filters, setFilters, patterns, filteredItems, clearFilters } = useItemFilters(items)
 
   useEffect(() => {
-    loadData()
-  }, [id])
-
-  const loadData = async () => {
     if (!id) return
 
-    try {
-      setLoading(true)
-      const [collectionData, itemsData] = await Promise.all([
-        collectionsAPI.get(id),
-        itemsAPI.list({ collection_id: id, limit: 500 }),
-      ])
-      setCollection(collectionData)
-      setItems(itemsData)
-    } catch (err) {
-      console.error('Error loading collection:', err)
-      navigate('/collections')
-    } finally {
-      setLoading(false)
-    }
-  }
+    let active = true
+    setLoading(true)
+    Promise.all([collectionsAPI.get(id), itemsAPI.list({ collection_id: id, limit: 500 })])
+      .then(([collectionData, itemsData]) => {
+        if (!active) return
+        setCollection(collectionData)
+        setItems(itemsData)
+      })
+      .catch(error => {
+        if (!active) return
+        console.error('Error loading collection:', error)
+        navigate('/collections')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [id, navigate])
 
   const handleRename = async (newName: string) => {
     if (!id || !collection) return
 
     try {
-      await collectionsAPI.update(id, { name: newName })
-      setCollection({ ...collection, name: newName })
+      const updated = await collectionsAPI.update(id, { name: newName })
+      setCollection(current => current?.id === id ? updated : current)
       setShowRenameDialog(false)
     } catch (err) {
       console.error('Error renaming collection:', err)
@@ -83,90 +78,12 @@ export default function CollectionDetail() {
   const handleDeleteItem = async (itemId: string) => {
     try {
       await itemsAPI.delete(itemId)
-      setItems(items.filter(item => item.id !== itemId))
+      setItems(current => current.filter(item => item.id !== itemId))
     } catch (err) {
       console.error('Error deleting item:', err)
       alert('Failed to delete item')
     }
   }
-
-  const handleClearFilters = () => {
-    setSelectedStatus('')
-    setSelectedDifficulty('')
-    setSelectedPattern('')
-    setSearchQuery('')
-    setSortBy('created_desc')
-  }
-
-  // Extract unique patterns from items
-  const uniquePatterns = useMemo(() => {
-    const patterns = new Set<string>()
-    items.forEach(item => {
-      if (item.metadata?.pattern) {
-        patterns.add(item.metadata.pattern)
-      }
-    })
-    return Array.from(patterns).sort()
-  }, [items])
-
-  // Filter and sort items
-  const filteredItems = useMemo(() => {
-    let filtered = items.filter(item => {
-      // Status filter
-      if (selectedStatus && item.scheduling_states?.[0]?.status !== selectedStatus) {
-        return false
-      }
-
-      // Difficulty filter
-      if (selectedDifficulty && item.metadata?.difficulty !== selectedDifficulty) {
-        return false
-      }
-
-      // Pattern filter (exact match)
-      if (selectedPattern && item.metadata?.pattern !== selectedPattern) {
-        return false
-      }
-
-      // Search filter
-      if (searchQuery && !item.title.toLowerCase().includes(searchQuery.toLowerCase())) {
-        return false
-      }
-
-      return true
-    })
-
-    // Sort items
-    return filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'created_desc':
-          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        case 'created_asc':
-          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        case 'review_asc': {
-          const aDate = a.scheduling_states?.[0]?.next_review_at
-          const bDate = b.scheduling_states?.[0]?.next_review_at
-          if (!aDate && !bDate) return 0
-          if (!aDate) return 1
-          if (!bDate) return -1
-          return new Date(aDate).getTime() - new Date(bDate).getTime()
-        }
-        case 'review_desc': {
-          const aDate = a.scheduling_states?.[0]?.next_review_at
-          const bDate = b.scheduling_states?.[0]?.next_review_at
-          if (!aDate && !bDate) return 0
-          if (!aDate) return 1
-          if (!bDate) return -1
-          return new Date(bDate).getTime() - new Date(aDate).getTime()
-        }
-        case 'title_asc':
-          return a.title.localeCompare(b.title)
-        case 'title_desc':
-          return b.title.localeCompare(a.title)
-        default:
-          return 0
-      }
-    })
-  }, [items, selectedStatus, selectedDifficulty, selectedPattern, searchQuery, sortBy])
 
   if (loading) {
     return <div className="flex justify-center items-center h-64">Loading...</div>
@@ -291,19 +208,10 @@ export default function CollectionDetail() {
       {/* Filters - only show if there are items */}
       {items.length > 0 && (
         <ItemFilters
-          patterns={uniquePatterns}
-          selectedStatus={selectedStatus}
-          selectedDifficulty={selectedDifficulty}
-          selectedPattern={selectedPattern}
-          searchQuery={searchQuery}
-          sortBy={sortBy}
-          onStatusChange={setSelectedStatus}
-          onDifficultyChange={setSelectedDifficulty}
-          onPatternChange={setSelectedPattern}
-          onSearchChange={setSearchQuery}
-          onSortChange={setSortBy}
-          onClearFilters={handleClearFilters}
-          showCollectionFilter={false}
+          patterns={patterns}
+          filters={filters}
+          onChange={setFilters}
+          onClear={clearFilters}
         />
       )}
 
@@ -328,7 +236,7 @@ export default function CollectionDetail() {
           </svg>
           <p className="text-gray-600 mb-4 mt-4">No items match your filters.</p>
           <Button
-            onClick={handleClearFilters}
+            onClick={clearFilters}
             variant="secondary"
           >
             Clear Filters

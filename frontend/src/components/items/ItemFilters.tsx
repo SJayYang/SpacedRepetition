@@ -1,165 +1,90 @@
-import { Collection } from '../../types'
+import type { ReactNode } from 'react'
+import type { Collection } from '../../types'
+import { itemSortOptions, type ItemFilterValues } from './useItemFilters'
 
 interface ItemFiltersProps {
   collections?: Collection[]
-  patterns?: string[]
-  selectedCollection?: string
-  selectedStatus: string
-  selectedDifficulty: string
-  selectedPattern?: string
-  searchQuery: string
-  sortBy: string
-  onCollectionChange?: (value: string) => void
-  onStatusChange: (value: string) => void
-  onDifficultyChange: (value: string) => void
-  onPatternChange?: (value: string) => void
-  onSearchChange: (value: string) => void
-  onSortChange: (value: string) => void
-  onClearFilters: () => void
-  showCollectionFilter?: boolean
+  patterns: string[]
+  filters: ItemFilterValues
+  onChange: (filters: ItemFilterValues) => void
+  onClear: () => void
 }
 
-export default function ItemFilters({
-  collections = [],
-  patterns = [],
-  selectedCollection = '',
-  selectedStatus,
-  selectedDifficulty,
-  selectedPattern = '',
-  searchQuery,
-  sortBy,
-  onCollectionChange,
-  onStatusChange,
-  onDifficultyChange,
-  onPatternChange,
-  onSearchChange,
-  onSortChange,
-  onClearFilters,
-  showCollectionFilter = true,
-}: ItemFiltersProps) {
-  const hasActiveFilters = selectedCollection || selectedStatus || selectedDifficulty || selectedPattern || searchQuery
+const fieldClasses = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm'
+
+function FilterField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label>
+      <span className="block text-sm font-medium text-gray-700 mb-1">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+export default function ItemFilters({ collections, patterns, filters, onChange, onClear }: ItemFiltersProps) {
+  const { collection, status, difficulty, pattern, search, sort } = filters
+  const hasActiveFilters = collection || status || difficulty || pattern || search
 
   return (
     <div className="bg-white shadow rounded-lg p-4 mb-6 border border-gray-200">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Filters</h3>
         {hasActiveFilters && (
-          <button
-            onClick={onClearFilters}
-            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-          >
+          <button type="button" onClick={onClear} className="text-sm text-primary-600 hover:text-primary-700 font-medium">
             Clear All
           </button>
         )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
-        {/* Search */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Search
-          </label>
+        <FilterField label="Search">
           <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            value={search}
+            onChange={event => onChange({ ...filters, search: event.target.value })}
             placeholder="Search by title..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
+            className={fieldClasses}
           />
-        </div>
+        </FilterField>
 
-        {/* Collection Filter - conditionally rendered */}
-        {showCollectionFilter && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Collection
-            </label>
-            <select
-              value={selectedCollection}
-              onChange={(e) => onCollectionChange?.(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-            >
+        {collections && (
+          <FilterField label="Collection">
+            <select value={collection} onChange={event => onChange({ ...filters, collection: event.target.value })} className={fieldClasses}>
               <option value="">All Collections</option>
-              {collections.map((collection) => (
-                <option key={collection.id} value={collection.id}>
-                  {collection.name}
-                </option>
-              ))}
+              {collections.map(entry => <option key={entry.id} value={entry.id}>{entry.name}</option>)}
             </select>
-          </div>
+          </FilterField>
         )}
 
-        {/* Status Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Status
-          </label>
-          <select
-            value={selectedStatus}
-            onChange={(e) => onStatusChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-          >
+        <FilterField label="Status">
+          <select value={status} onChange={event => onChange({ ...filters, status: event.target.value })} className={fieldClasses}>
             <option value="">All Status</option>
             <option value="new">New</option>
             <option value="learning">Learning</option>
             <option value="review">Review</option>
           </select>
-        </div>
+        </FilterField>
 
-        {/* Difficulty Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Difficulty
-          </label>
-          <select
-            value={selectedDifficulty}
-            onChange={(e) => onDifficultyChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-          >
+        <FilterField label="Difficulty">
+          <select value={difficulty} onChange={event => onChange({ ...filters, difficulty: event.target.value })} className={fieldClasses}>
             <option value="">All Difficulties</option>
-            <option value="Easy">Easy</option>
-            <option value="Medium">Medium</option>
-            <option value="Hard">Hard</option>
+            <option>Easy</option>
+            <option>Medium</option>
+            <option>Hard</option>
           </select>
-        </div>
+        </FilterField>
 
-        {/* Pattern Filter */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Pattern
-          </label>
-          <select
-            value={selectedPattern}
-            onChange={(e) => onPatternChange?.(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-          >
+        <FilterField label="Pattern">
+          <select value={pattern} onChange={event => onChange({ ...filters, pattern: event.target.value })} className={fieldClasses}>
             <option value="">All Patterns</option>
-            {patterns.map((pattern) => (
-              <option key={pattern} value={pattern}>
-                {pattern}
-              </option>
-            ))}
+            {patterns.map(entry => <option key={entry}>{entry}</option>)}
           </select>
-        </div>
+        </FilterField>
 
-        {/* Sort By */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Sort By
-          </label>
-          <select
-            value={sortBy}
-            onChange={(e) => onSortChange(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-          >
-            <option value="created_desc">Newest First</option>
-            <option value="created_asc">Oldest First</option>
-            <option value="review_asc">Next Review (Soonest)</option>
-            <option value="review_desc">Next Review (Latest)</option>
-            <option value="title_asc">Title (A-Z)</option>
-            <option value="title_desc">Title (Z-A)</option>
+        <FilterField label="Sort By">
+          <select value={sort} onChange={event => onChange({ ...filters, sort: event.target.value as ItemFilterValues['sort'] })} className={fieldClasses}>
+            {Object.entries(itemSortOptions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
-        </div>
+        </FilterField>
       </div>
     </div>
   )

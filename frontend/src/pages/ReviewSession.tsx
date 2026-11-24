@@ -1,71 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { reviewsAPI, collectionsAPI } from '../api/client'
-import { Collection } from '../types'
+import type { Collection, DueItem, Rating } from '../types'
 import Badge from '../components/common/Badge'
 import Button from '../components/common/Button'
 import Card from '../components/common/Card'
 import CollectionSelector from '../components/review/CollectionSelector'
 import { getDifficultyVariant } from '../utils/badgeHelpers'
-
-interface DueItem {
-  id: string
-  item_id: string
-  items: {
-    id: string
-    title: string
-    external_url?: string
-    metadata: any
-    notes?: string
-  }
-}
-
-interface SessionState {
-  collectionId: string | null
-  currentIndex: number
-  reviewsCompleted: number
-  itemIds: string[]
-  timestamp: number
-}
-
-const SESSION_STORAGE_KEY = 'review_session_state'
-const SESSION_EXPIRY_MS = 30 * 60 * 1000 // 30 minutes
-
-function saveSessionState(state: SessionState) {
-  try {
-    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(state))
-  } catch (err) {
-    console.error('Failed to save session state:', err)
-  }
-}
-
-function loadSessionState(): SessionState | null {
-  try {
-    const saved = localStorage.getItem(SESSION_STORAGE_KEY)
-    if (!saved) return null
-
-    const state: SessionState = JSON.parse(saved)
-
-    // Check if session has expired
-    if (Date.now() - state.timestamp > SESSION_EXPIRY_MS) {
-      localStorage.removeItem(SESSION_STORAGE_KEY)
-      return null
-    }
-
-    return state
-  } catch (err) {
-    console.error('Failed to load session state:', err)
-    return null
-  }
-}
-
-function clearSessionState() {
-  try {
-    localStorage.removeItem(SESSION_STORAGE_KEY)
-  } catch (err) {
-    console.error('Failed to clear session state:', err)
-  }
-}
+import { clearReviewSession, restoreReviewSession, saveReviewSession } from '../components/review/sessionStorage'
 
 export default function ReviewSession() {
   const navigate = useNavigate()
@@ -82,104 +24,78 @@ export default function ReviewSession() {
   const [sessionComplete, setSessionComplete] = useState(false)
   const [reviewsCompleted, setReviewsCompleted] = useState(0)
   const [showPattern, setShowPattern] = useState(false)
-  const [sessionRestored, setSessionRestored] = useState(false)
   const [showRestoredMessage, setShowRestoredMessage] = useState(false)
 
   useEffect(() => {
-    loadCollections()
+    let active = true
+    collectionsAPI.list().then(data => {
+      if (active) setCollections(data)
+    }).catch(error => console.error('Error loading collections:', error))
+    return () => { active = false }
   }, [])
 
   useEffect(() => {
-    if (selectedCollectionId !== null || !showCollectionSelector) {
-      loadDueItems()
-    }
+    if (showCollectionSelector) return
+
+    let active = true
+    reviewsAPI.getDue({ limit: 50, collection_id: selectedCollectionId ?? undefined })
+      .then(items => {
+        if (!active) return
+
+        const restored = restoreReviewSession(selectedCollectionId, items)
+        setDueItems(restored?.remaining ?? items)
+        setReviewsCompleted(restored?.reviewsCompleted ?? 0)
+        setShowRestoredMessage(Boolean(restored))
+        if (!restored) clearReviewSession()
+      })
+      .catch(error => {
+        if (!active) return
+        console.error('Error loading due items:', error)
+        alert('Failed to load due items')
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
   }, [selectedCollectionId, showCollectionSelector])
 
-  // Save session state whenever progress changes
   useEffect(() => {
-    if (dueItems.length > 0 && !sessionComplete) {
-      const state: SessionState = {
-        collectionId: selectedCollectionId,
-        currentIndex,
-        reviewsCompleted,
-        itemIds: dueItems.map(item => item.item_id),
-        timestamp: Date.now(),
-      }
-      saveSessionState(state)
-    }
-  }, [currentIndex, reviewsCompleted, dueItems, selectedCollectionId, sessionComplete])
+    if (!showRestoredMessage) return
 
-  const loadCollections = async () => {
-    try {
-      const data = await collectionsAPI.list()
-      setCollections(data)
-    } catch (err) {
-      console.error('Error loading collections:', err)
-    }
-  }
+    const timer = window.setTimeout(() => setShowRestoredMessage(false), 5000)
+    return () => window.clearTimeout(timer)
+  }, [showRestoredMessage])
 
-  const loadDueItems = async () => {
-    try {
-      setLoading(true)
-      const params: any = { limit: 50 }
-      if (selectedCollectionId) {
-        params.collection_id = selectedCollectionId
-      }
-      const data = await reviewsAPI.getDue(params)
-      setDueItems(data)
+  useEffect(() => {
+    if (loading || showCollectionSelector || sessionComplete || dueItems.length === 0) return
 
-      if (data.length === 0) {
-        setSessionComplete(true)
-        clearSessionState()
-        return
-      }
-
-      // Try to restore previous session state
-      if (!sessionRestored) {
-        const savedState = loadSessionState()
-        if (savedState && savedState.collectionId === selectedCollectionId) {
-          // Verify the saved item IDs match current due items
-          const currentItemIds = data.map((item: DueItem) => item.item_id)
-          const hasMatchingItems = savedState.itemIds.every(id => currentItemIds.includes(id))
-
-          if (hasMatchingItems && savedState.currentIndex < data.length) {
-            setCurrentIndex(savedState.currentIndex)
-            setReviewsCompleted(savedState.reviewsCompleted)
-            setSessionRestored(true)
-            setShowRestoredMessage(true)
-            // Hide message after 5 seconds
-            setTimeout(() => setShowRestoredMessage(false), 5000)
-          } else {
-            // Session is stale, clear it
-            clearSessionState()
-          }
-        }
-        setSessionRestored(true)
-      }
-    } catch (err) {
-      console.error('Error loading due items:', err)
-      alert('Failed to load due items')
-    } finally {
-      setLoading(false)
-    }
-  }
+    saveReviewSession({
+      collectionId: selectedCollectionId,
+      currentIndex,
+      reviewsCompleted,
+      itemIds: dueItems.map(item => item.item_id),
+    })
+  }, [currentIndex, reviewsCompleted, dueItems, selectedCollectionId, sessionComplete, loading, showCollectionSelector])
 
   const handleCollectionSelect = (collectionId: string | null) => {
+    setLoading(true)
     setSelectedCollectionId(collectionId)
     setShowCollectionSelector(false)
   }
 
   const handleChangeCollection = () => {
-    clearSessionState()
+    clearReviewSession()
     setShowCollectionSelector(true)
     setSessionComplete(false)
+    setDueItems([])
     setCurrentIndex(0)
     setReviewsCompleted(0)
-    setSessionRestored(false)
+    setShowPattern(false)
+    setShowRestoredMessage(false)
   }
 
-  const handleRating = async (rating: 1 | 2 | 3 | 4) => {
-    if (!currentItem) return
+  const handleRating = async (rating: Rating) => {
+    if (!currentItem || submitting) return
 
     try {
       setSubmitting(true)
@@ -198,7 +114,7 @@ export default function ReviewSession() {
         setCurrentIndex(prev => prev + 1)
       } else {
         setSessionComplete(true)
-        clearSessionState()
+        clearReviewSession()
       }
     } catch (err) {
       console.error('Error submitting review:', err)
@@ -209,6 +125,8 @@ export default function ReviewSession() {
   }
 
   const currentItem = dueItems[currentIndex]
+  const totalItems = dueItems.length - currentIndex + reviewsCompleted
+  const progress = reviewsCompleted + 1
 
   if (showCollectionSelector) {
     return (
@@ -232,9 +150,9 @@ export default function ReviewSession() {
     ? collections.find(c => c.id === selectedCollectionId)
     : null
 
-  if (sessionComplete || dueItems.length === 0) {
-    const collectionName = selectedCollection ? selectedCollection.name : 'All Collections'
+  const collectionName = selectedCollection?.name ?? 'All Collections'
 
+  if (sessionComplete || !currentItem) {
     return (
       <div className="max-w-2xl mx-auto px-4 py-12">
         <Card padding="lg" className="text-center">
@@ -272,8 +190,6 @@ export default function ReviewSession() {
     )
   }
 
-  const collectionName = selectedCollection ? selectedCollection.name : 'All Collections'
-
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
       {/* Restored Session Message */}
@@ -294,6 +210,7 @@ export default function ReviewSession() {
             variant="ghost"
             size="sm"
             onClick={handleChangeCollection}
+            disabled={submitting}
           >
             Change Collection
           </Button>
@@ -304,12 +221,12 @@ export default function ReviewSession() {
       <div className="mb-6">
         <div className="flex justify-between text-sm text-gray-600 mb-2">
           <span>Progress</span>
-          <span>{currentIndex + 1} / {dueItems.length}</span>
+          <span>{progress} / {totalItems}</span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2">
           <div
             className="bg-primary-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${((currentIndex + 1) / dueItems.length) * 100}%` }}
+            style={{ width: `${(progress / totalItems) * 100}%` }}
           />
         </div>
       </div>

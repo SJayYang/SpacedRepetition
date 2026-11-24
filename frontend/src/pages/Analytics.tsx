@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { analyticsAPI } from '../api/client'
+import type { RetentionPoint, TopicPerformance } from '../types'
 
 export default function Analytics() {
-  const [retention, setRetention] = useState<any[]>([])
-  const [topics, setTopics] = useState<any[]>([])
+  const [retention, setRetention] = useState<RetentionPoint[]>([])
+  const [topics, setTopics] = useState<TopicPerformance[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

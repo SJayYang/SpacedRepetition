@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { authAPI } from '../api/client'
+import type { Profile, ProfileSettings } from '../types'
 
 export default function Settings() {
-  const [profile, setProfile] = useState<any>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [settings, setSettings] = useState({
+  const [settings, setSettings] = useState<ProfileSettings>({
     daily_review_limit: 100,
     new_items_per_day: 20,
     default_ease_factor: 2.5,

@@ -17,8 +17,8 @@ export default function Dashboard() {
       setLoading(true)
       const data = await analyticsAPI.getSummary()
       setStats(data)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard')
     } finally {
       setLoading(false)
     }
