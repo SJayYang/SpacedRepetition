@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 Rating = Literal[1, 2, 3, 4]
@@ -14,7 +14,7 @@ class SchedulingState(BaseModel):
     interval_days: int = 0
     repetitions: int = 0
     status: Status = "new"
-    next_review_at: datetime = datetime.now(timezone.utc)
+    next_review_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     last_review_at: datetime | None = None
 
 
@@ -97,7 +97,7 @@ class SM2Scheduler:
         # Enforce minimum 3-day interval for all reviews
         interval_days = max(3, interval_days)
 
-        next_review_at = datetime.now(timezone.utc) + timedelta(days=interval_days)
+        next_review_at = now + timedelta(days=interval_days)
         # Item is being reviewed, so it's no longer "new" - mark as has_been_reviewed
         status = self._determine_status(repetitions, interval_days, has_been_reviewed=True)
 
@@ -107,7 +107,7 @@ class SM2Scheduler:
             repetitions=repetitions,
             status=status,
             next_review_at=next_review_at,
-            last_review_at=datetime.now(timezone.utc)
+            last_review_at=now
         )
 
         return ReviewResult(

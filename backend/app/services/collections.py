@@ -1,17 +1,15 @@
-"""Collections service."""
-from typing import List, Dict, Any
-
-from supabase import Client
-
-from app.services.base import BaseService
+from app.services.base import BaseService, Row
 
 
 class CollectionsService(BaseService):
-    """Service for collections operations."""
+    table_name = "collections"
+    not_found_message = "Collection not found"
 
-    def __init__(self, supabase: Client, user_id: str):
-        super().__init__("collections", supabase, user_id)
-
-    async def list(self, **kwargs) -> List[Dict[str, Any]]:
-        """List collections ordered by creation date."""
-        return await super().list(order_by="created_at", desc=False, **kwargs)
+    def list(self) -> list[Row]:
+        return (
+            self.table.select("*")
+            .eq("user_id", self.user_id)
+            .order("created_at")
+            .execute()
+            .data
+        )

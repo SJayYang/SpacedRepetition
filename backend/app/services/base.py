@@ -1,106 +1,58 @@
-"""Base service class for common database operations."""
 from datetime import datetime, timezone
-from typing import Optional, Any, Dict, List
+from typing import Any, ClassVar
 from uuid import UUID
 
 from fastapi import HTTPException
 from supabase import Client
 
+Row = dict[str, Any]
+
 
 class BaseService:
-    """Base service with common CRUD operations."""
+    table_name: ClassVar[str]
+    not_found_message: ClassVar[str]
 
-    def __init__(self, table_name: str, supabase: Client, user_id: str):
-        self.table_name = table_name
+    def __init__(self, supabase: Client, user_id: str):
         self.supabase = supabase
         self.user_id = user_id
 
-    async def list(
-        self,
-        order_by: str = "created_at",
-        desc: bool = False,
-        limit: Optional[int] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        select: str = "*"
-    ) -> List[Dict[str, Any]]:
-        """List all items for the current user."""
-        query = self.supabase.table(self.table_name).select(select).eq("user_id", self.user_id)
+    @property
+    def table(self):
+        return self.supabase.table(self.table_name)
 
-        # Apply additional filters
-        if filters:
-            for key, value in filters.items():
-                if value is not None:
-                    query = query.eq(key, value)
-
-        # Apply ordering
-        query = query.order(order_by, desc=desc)
-
-        # Apply limit
-        if limit:
-            query = query.limit(limit)
-
-        response = query.execute()
-        return response.data
-
-    async def get(
-        self,
-        item_id: UUID,
-        select: str = "*",
-        not_found_message: str = "Item not found"
-    ) -> Dict[str, Any]:
-        """Get a single item by ID."""
-        response = self.supabase.table(self.table_name) \
-            .select(select) \
-            .eq("id", str(item_id)) \
-            .eq("user_id", self.user_id) \
-            .single() \
+    def get(self, item_id: UUID, select: str = "*") -> Row:
+        response = (
+            self.table.select(select)
+            .eq("id", str(item_id))
+            .eq("user_id", self.user_id)
+            .limit(1)
             .execute()
+        )
+        return self._first_row(response.data)
 
-        if not response.data:
-            raise HTTPException(status_code=404, detail=not_found_message)
+    def create(self, data: Row) -> Row:
+        return self.table.insert({**data, "user_id": self.user_id}).execute().data[0]
 
-        return response.data
-
-    async def create(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new item."""
-        # Add user_id to data
-        data["user_id"] = self.user_id
-
-        response = self.supabase.table(self.table_name).insert(data).execute()
-        return response.data[0]
-
-    async def update(
-        self,
-        item_id: UUID,
-        data: Dict[str, Any],
-        not_found_message: str = "Item not found"
-    ) -> Dict[str, Any]:
-        """Update an existing item."""
-        # Add updated_at timestamp
-        data["updated_at"] = datetime.now(timezone.utc).isoformat()
-
-        response = self.supabase.table(self.table_name).update(data) \
-            .eq("id", str(item_id)) \
-            .eq("user_id", self.user_id) \
+    def update(self, item_id: UUID, data: Row) -> Row:
+        response = (
+            self.table.update({**data, "updated_at": datetime.now(timezone.utc).isoformat()})
+            .eq("id", str(item_id))
+            .eq("user_id", self.user_id)
             .execute()
+        )
+        return self._first_row(response.data)
 
-        if not response.data:
-            raise HTTPException(status_code=404, detail=not_found_message)
-
-        return response.data[0]
-
-    async def delete(
-        self,
-        item_id: UUID,
-        not_found_message: str = "Item not found"
-    ) -> Dict[str, str]:
-        """Delete an item."""
-        response = self.supabase.table(self.table_name).delete() \
-            .eq("id", str(item_id)) \
-            .eq("user_id", self.user_id) \
+    def delete(self, item_id: UUID) -> dict[str, str]:
+        response = (
+            self.table.delete()
+            .eq("id", str(item_id))
+            .eq("user_id", self.user_id)
             .execute()
-
-        if not response.data:
-            raise HTTPException(status_code=404, detail=not_found_message)
-
+        )
+        self._first_row(response.data)
         return {"message": f"{self.table_name.capitalize()} deleted successfully"}
+
+    def _first_row(self, rows: list[Row]) -> Row:
+        if not rows:
+            raise HTTPException(status_code=404, detail=self.not_found_message)
+        return rows[0]

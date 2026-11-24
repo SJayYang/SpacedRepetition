@@ -19,73 +19,64 @@ def get_items_service(
 
 
 @router.get("/")
-async def list_items(
+def list_items(
     collection_id: Optional[UUID] = None,
     archived: bool = False,
     limit: int = Query(default=100, le=500),
     service: ItemsService = Depends(get_items_service)
 ):
     """List items with optional filtering."""
-    return await service.list(collection_id=collection_id, archived=archived, limit=limit)
+    return service.list(collection_id=collection_id, archived=archived, limit=limit)
 
 
 @router.post("/", response_model=ItemResponse)
-async def create_item(
+def create_item(
     item: ItemCreate,
     service: ItemsService = Depends(get_items_service),
     _: None = Depends(ensure_profile_exists)
 ):
     """Create a new item."""
-    return await service.create_with_scheduling({
-        "collection_id": str(item.collection_id),
-        "title": item.title,
-        "external_id": item.external_id,
-        "external_url": item.external_url,
-        "metadata": item.metadata,
-        "notes": item.notes,
-    })
+    return service.create_with_scheduling(item.collection_id, item.model_dump(exclude={"collection_id"}))
 
 
 @router.post("/bulk")
-async def bulk_create_items(
+def bulk_create_items(
     bulk_items: ItemBulkCreate,
     service: ItemsService = Depends(get_items_service),
     _: None = Depends(ensure_profile_exists)
 ):
     """Bulk import items."""
-    return await service.bulk_create(bulk_items.collection_id, bulk_items.items)
+    items = service.bulk_create(bulk_items.collection_id, bulk_items.items)
+    return {"message": f"Created {len(items)} items", "items": items}
 
 
 @router.get("/{item_id}")
-async def get_item(
+def get_item(
     item_id: UUID,
     service: ItemsService = Depends(get_items_service)
 ):
     """Get item details."""
-    return await service.get(item_id, select="*, scheduling_states(*)", not_found_message="Item not found")
+    return service.get(item_id, select="*, scheduling_states(*)")
 
 
 @router.patch("/{item_id}")
-async def update_item(
+def update_item(
     item_id: UUID,
     item: ItemUpdate,
     service: ItemsService = Depends(get_items_service)
 ):
     """Update item."""
     update_data = item.model_dump(exclude_unset=True)
-    return await service.update(item_id, update_data, not_found_message="Item not found")
+    return service.update(item_id, update_data)
 
 
 @router.delete("/{item_id}")
-async def delete_item(
+def delete_item(
     item_id: UUID,
     archive: bool = Query(default=True),
     service: ItemsService = Depends(get_items_service)
 ):
     """Delete or archive item."""
     if archive:
-        # Soft delete (archive)
-        return await service.archive(item_id)
-    else:
-        # Hard delete
-        return await service.delete(item_id, not_found_message="Item not found")
+        return service.archive(item_id)
+    return service.delete(item_id)

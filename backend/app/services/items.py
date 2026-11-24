@@ -1,126 +1,102 @@
-"""Items service."""
+from __future__ import annotations
+
 from datetime import datetime, timezone
-from typing import List, Dict, Any, Optional
 from uuid import UUID
 
-from supabase import Client
-
-from app.services.base import BaseService
+from app.services.base import BaseService, Row
+from app.services.collections import CollectionsService
 
 
 class ItemsService(BaseService):
-    """Service for items operations."""
+    table_name = "items"
+    not_found_message = "Item not found"
 
-    def __init__(self, supabase: Client, user_id: str):
-        super().__init__("items", supabase, user_id)
-
-    async def list(
+    def list(
         self,
-        collection_id: Optional[UUID] = None,
+        collection_id: UUID | None = None,
         archived: bool = False,
         limit: int = 100,
-        **kwargs
-    ) -> List[Dict[str, Any]]:
-        """List items with optional filtering."""
-        filters = {}
-        if collection_id:
-            filters["collection_id"] = str(collection_id)
-
-        # Build query
-        query = self.supabase.table(self.table_name) \
-            .select("*, scheduling_states(*)") \
-            .eq("user_id", self.user_id) \
-            .order("created_at", desc=True) \
+    ) -> list[Row]:
+        query = (
+            self.table.select("*, scheduling_states(*)")
+            .eq("user_id", self.user_id)
+            .order("created_at", desc=True)
             .limit(limit)
-
+        )
         if collection_id:
             query = query.eq("collection_id", str(collection_id))
-
         if not archived:
             query = query.is_("archived_at", "null")
 
-        response = query.execute()
-        items = response.data
+        items = query.execute().data
+        if not items:
+            return items
 
-        # Fetch the most recent review for each item
-        if items:
-            item_ids = [item["id"] for item in items]
-            reviews_response = self.supabase.table("reviews") \
-                .select("item_id, rating, reviewed_at") \
-                .eq("user_id", self.user_id) \
-                .in_("item_id", item_ids) \
-                .order("reviewed_at", desc=True) \
-                .execute()
+        reviews = (
+            self.supabase.table("reviews")
+            .select("item_id, rating, reviewed_at")
+            .eq("user_id", self.user_id)
+            .in_("item_id", [item["id"] for item in items])
+            .order("reviewed_at", desc=True)
+            .execute()
+            .data
+        )
+        recent_reviews = {}
+        for review in reviews:
+            recent_reviews.setdefault(review["item_id"], review)
+        return [{**item, "recent_review": recent_reviews.get(item["id"])} for item in items]
 
-            # Create a map of item_id to most recent review
-            recent_reviews = {}
-            for review in reviews_response.data:
-                if review["item_id"] not in recent_reviews:
-                    recent_reviews[review["item_id"]] = review
+    def create_with_scheduling(self, collection_id: UUID, data: Row) -> Row:
+        return self._insert_items(collection_id, [data])[0]
 
-            # Add recent review to each item
-            for item in items:
-                item["recent_review"] = recent_reviews.get(item["id"])
+    def bulk_create(self, collection_id: UUID, items: list[Row]) -> list[Row]:
+        return self._insert_items(collection_id, items)
 
-        return items
+    def import_preset(self, collection_id: UUID, problems: list[Row]) -> list[Row]:
+        return self._insert_items(collection_id, problems, skip_duplicates=True)
 
-    async def create_with_scheduling(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create item and its scheduling state."""
-        # Add user_id to data
-        data["user_id"] = self.user_id
+    def _insert_items(
+        self,
+        collection_id: UUID,
+        items: list[Row],
+        *,
+        skip_duplicates: bool = False,
+    ) -> list[Row]:
+        CollectionsService(self.supabase, self.user_id).get(collection_id, select="id")
+        if not items:
+            return []
 
-        # Create item
-        item_response = self.supabase.table(self.table_name).insert(data).execute()
-        created_item = item_response.data[0]
-
-        # Create scheduling state for the new item
-        self.supabase.table("scheduling_states").insert({
-            "item_id": created_item["id"],
-            "user_id": self.user_id,
-            "status": "new",
-            "next_review_at": datetime.now(timezone.utc).isoformat(),
-        }).execute()
-
-        return created_item
-
-    async def bulk_create(self, collection_id: UUID, items_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-        """Bulk import items."""
-        items_to_insert = []
-        for item_data in items_data:
-            items_to_insert.append({
+        rows = [
+            {
                 "user_id": self.user_id,
                 "collection_id": str(collection_id),
-                "title": item_data.get("title"),
-                "external_id": item_data.get("external_id"),
-                "external_url": item_data.get("external_url"),
-                "metadata": item_data.get("metadata", {}),
-                "notes": item_data.get("notes"),
-            })
+                "title": item.get("title"),
+                "external_id": item.get("external_id"),
+                "external_url": item.get("external_url"),
+                "metadata": item.get("metadata", {}),
+                "notes": item.get("notes"),
+            }
+            for item in items
+        ]
+        if skip_duplicates:
+            query = self.table.upsert(
+                rows, on_conflict="user_id,collection_id,external_id", ignore_duplicates=True
+            )
+        else:
+            query = self.table.insert(rows)
+        created = query.execute().data
+        if created:
+            now = datetime.now(timezone.utc).isoformat()
+            self.supabase.table("scheduling_states").insert([
+                {
+                    "item_id": item["id"],
+                    "user_id": self.user_id,
+                    "status": "new",
+                    "next_review_at": now,
+                }
+                for item in created
+            ]).execute()
+        return created
 
-        # Insert items
-        items_response = self.supabase.table(self.table_name).insert(items_to_insert).execute()
-
-        # Create scheduling states
-        scheduling_states = []
-        for item in items_response.data:
-            scheduling_states.append({
-                "item_id": item["id"],
-                "user_id": self.user_id,
-                "status": "new",
-                "next_review_at": datetime.now(timezone.utc).isoformat(),
-            })
-
-        self.supabase.table("scheduling_states").insert(scheduling_states).execute()
-
-        return {
-            "message": f"Created {len(items_response.data)} items",
-            "items": items_response.data
-        }
-
-    async def archive(self, item_id: UUID) -> Dict[str, Any]:
-        """Archive (soft delete) an item."""
-        return await self.update(
-            item_id,
-            {"archived_at": datetime.now(timezone.utc).isoformat()},
-            not_found_message="Item not found"
-        )
+    def archive(self, item_id: UUID) -> Row:
+        return self.update(item_id, {"archived_at": datetime.now(timezone.utc).isoformat()})

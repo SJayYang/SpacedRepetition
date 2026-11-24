@@ -18,52 +18,47 @@ def get_collections_service(
 
 
 @router.get("/")
-async def list_collections(
+def list_collections(
     service: CollectionsService = Depends(get_collections_service)
 ):
     """List user's collections."""
-    return await service.list()
+    return service.list()
 
 
 @router.post("/", response_model=CollectionResponse)
-async def create_collection(
+def create_collection(
     collection: CollectionCreate,
     service: CollectionsService = Depends(get_collections_service),
     _: None = Depends(ensure_profile_exists)
 ):
     """Create a new collection."""
-    return await service.create({
-        "name": collection.name,
-        "description": collection.description,
-        "item_type": collection.item_type,
-        "is_default": collection.is_default,
-    })
+    return service.create(collection.model_dump())
 
 
 @router.get("/{collection_id}")
-async def get_collection(
+def get_collection(
     collection_id: UUID,
     service: CollectionsService = Depends(get_collections_service)
 ):
     """Get collection details."""
-    return await service.get(collection_id, not_found_message="Collection not found")
+    return service.get(collection_id)
 
 
 @router.patch("/{collection_id}")
-async def update_collection(
+def update_collection(
     collection_id: UUID,
     collection: CollectionUpdate,
     service: CollectionsService = Depends(get_collections_service)
 ):
     """Update collection."""
     update_data = collection.model_dump(exclude_unset=True)
-    return await service.update(collection_id, update_data, not_found_message="Collection not found")
+    return service.update(collection_id, update_data)
 
 
 @router.delete("/{collection_id}")
-async def delete_collection(
+def delete_collection(
     collection_id: UUID,
     service: CollectionsService = Depends(get_collections_service)
 ):
     """Delete collection."""
-    return await service.delete(collection_id, not_found_message="Collection not found")
+    return service.delete(collection_id)

@@ -1,210 +1,159 @@
-from datetime import datetime, timezone, timedelta
-from collections import defaultdict
+from collections import Counter, defaultdict
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
+from supabase import Client
 
-from app.dependencies import get_current_user, get_authenticated_supabase
+from app.dependencies import get_authenticated_supabase, get_current_user
+from app.reviews.queries import active_scheduling_states
 
 router = APIRouter()
 
 
+def success_rate(successes: int, total: int) -> float:
+    return round(successes / total * 100, 1) if total else 0
+
+
+def count_rows(supabase: Client, table: str, user_id: str):
+    return supabase.table(table).select("id", count="exact").eq("user_id", user_id).limit(1)
+
+
 @router.get("/summary")
-async def get_summary(
+def get_summary(
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase: Client = Depends(get_authenticated_supabase),
 ):
-    """Get dashboard summary statistics."""
-
-    # Due items count
-    due_response = supabase.table("scheduling_states") \
-        .select("id", count="exact") \
-        .eq("user_id", user["id"]) \
-        .lte("next_review_at", datetime.now(timezone.utc).isoformat()) \
+    now = datetime.now(timezone.utc)
+    user_id = user["id"]
+    due = (
+        active_scheduling_states(supabase, user_id, "id", count="exact")
+        .limit(1)
+        .lte("next_review_at", now.isoformat())
         .execute()
-
-    # Overdue items (more than 1 day overdue)
-    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
-    overdue_response = supabase.table("scheduling_states") \
-        .select("id", count="exact") \
-        .eq("user_id", user["id"]) \
-        .lte("next_review_at", yesterday.isoformat()) \
+    )
+    overdue = (
+        active_scheduling_states(supabase, user_id, "id", count="exact")
+        .limit(1)
+        .lte("next_review_at", (now - timedelta(days=1)).isoformat())
         .execute()
-
-    # Total items
-    total_items_response = supabase.table("items") \
-        .select("id", count="exact") \
-        .eq("user_id", user["id"]) \
-        .is_("archived_at", "null") \
+    )
+    items = count_rows(supabase, "items", user_id).is_("archived_at", "null").execute()
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    reviews_today = (
+        count_rows(supabase, "reviews", user_id)
+        .gte("reviewed_at", today.isoformat())
         .execute()
-
-    # Reviews completed today
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    today_reviews_response = supabase.table("reviews") \
-        .select("id", count="exact") \
-        .eq("user_id", user["id"]) \
-        .gte("reviewed_at", today_start.isoformat()) \
+    )
+    retention = (
+        supabase.table("reviews")
+        .select("rating")
+        .eq("user_id", user_id)
+        .gte("reviewed_at", (now - timedelta(days=30)).isoformat())
         .execute()
-
-    # Calculate streak
-    streak = await calculate_streak(user["id"], supabase)
-
-    # Retention rate (last 30 days)
-    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    retention_response = supabase.table("reviews") \
-        .select("rating") \
-        .eq("user_id", user["id"]) \
-        .gte("reviewed_at", thirty_days_ago.isoformat()) \
-        .execute()
-
-    retention_rate = 0
-    if retention_response.data:
-        successful_reviews = sum(1 for r in retention_response.data if r["rating"] >= 3)
-        retention_rate = round(successful_reviews / len(retention_response.data) * 100, 1)
-
+        .data
+    )
     return {
-        "due_count": due_response.count or 0,
-        "overdue_count": overdue_response.count or 0,
-        "total_items": total_items_response.count or 0,
-        "reviews_today": today_reviews_response.count or 0,
-        "streak": streak,
-        "retention_rate": retention_rate,
+        "due_count": due.count or 0,
+        "overdue_count": overdue.count or 0,
+        "total_items": items.count or 0,
+        "reviews_today": reviews_today.count or 0,
+        "streak": calculate_streak(user_id, supabase, now),
+        "retention_rate": success_rate(sum(review["rating"] >= 3 for review in retention), len(retention)),
     }
 
 
 @router.get("/retention")
-async def get_retention_rate(
+def get_retention_rate(
     days: int = Query(default=30, le=365),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase: Client = Depends(get_authenticated_supabase),
 ):
-    """Get retention rate over time."""
-    start_date = datetime.now(timezone.utc) - timedelta(days=days)
-
-    response = supabase.table("reviews") \
-        .select("rating, reviewed_at") \
-        .eq("user_id", user["id"]) \
-        .gte("reviewed_at", start_date.isoformat()) \
-        .order("reviewed_at") \
+    start = datetime.now(timezone.utc) - timedelta(days=days)
+    reviews = (
+        supabase.table("reviews")
+        .select("rating, reviewed_at")
+        .eq("user_id", user["id"])
+        .gte("reviewed_at", start.isoformat())
+        .order("reviewed_at")
         .execute()
+        .data
+    )
+    ratings_by_day = defaultdict(list)
+    for review in reviews:
+        ratings_by_day[review["reviewed_at"][:10]].append(review["rating"])
 
-    # Group by date
-    by_date = defaultdict(lambda: {"total": 0, "successful": 0})
-
-    for review in response.data:
-        date = review["reviewed_at"][:10]
-        by_date[date]["total"] += 1
-        if review["rating"] >= 3:
-            by_date[date]["successful"] += 1
-
-    # Calculate retention rate per day
-    result = []
-    for date, counts in sorted(by_date.items()):
-        rate = round(counts["successful"] / counts["total"] * 100, 1) if counts["total"] > 0 else 0
-        result.append({
-            "date": date,
-            "rate": rate,
-            "total_reviews": counts["total"]
-        })
-
-    return result
+    return [
+        {"date": day, "rate": success_rate(sum(rating >= 3 for rating in ratings), len(ratings)), "total_reviews": len(ratings)}
+        for day, ratings in sorted(ratings_by_day.items())
+    ]
 
 
 @router.get("/heatmap")
-async def get_heatmap(
+def get_heatmap(
     days: int = Query(default=365, le=365),
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase: Client = Depends(get_authenticated_supabase),
 ):
-    """Get activity heatmap data (GitHub-style)."""
-    start_date = datetime.now(timezone.utc) - timedelta(days=days)
-
-    response = supabase.table("reviews") \
-        .select("reviewed_at") \
-        .eq("user_id", user["id"]) \
-        .gte("reviewed_at", start_date.isoformat()) \
+    start = datetime.now(timezone.utc) - timedelta(days=days)
+    reviews = (
+        supabase.table("reviews")
+        .select("reviewed_at")
+        .eq("user_id", user["id"])
+        .gte("reviewed_at", start.isoformat())
         .execute()
-
-    # Count reviews per day
-    by_date = defaultdict(int)
-    for review in response.data:
-        date = review["reviewed_at"][:10]
-        by_date[date] += 1
-
-    return [{"date": k, "count": v} for k, v in sorted(by_date.items())]
+        .data
+    )
+    counts = Counter(review["reviewed_at"][:10] for review in reviews)
+    return [{"date": day, "count": count} for day, count in sorted(counts.items())]
 
 
 @router.get("/topics")
-async def get_topics_performance(
+def get_topics_performance(
     user: dict = Depends(get_current_user),
-    supabase=Depends(get_authenticated_supabase)
+    supabase: Client = Depends(get_authenticated_supabase),
 ):
-    """Get performance breakdown by topic."""
-    # Get all reviews with item metadata
-    response = supabase.table("reviews") \
-        .select("rating, items(metadata)") \
-        .eq("user_id", user["id"]) \
+    reviews = (
+        supabase.table("reviews")
+        .select("rating, items(metadata)")
+        .eq("user_id", user["id"])
         .execute()
+        .data
+    )
+    ratings_by_topic = defaultdict(list)
+    for review in reviews:
+        item = review.get("items") or {}
+        metadata = item.get("metadata") or {}
+        for topic in metadata.get("topics") or []:
+            ratings_by_topic[topic].append(review["rating"])
 
-    # Aggregate by topic
-    by_topic = defaultdict(lambda: {"total": 0, "successful": 0})
-
-    for review in response.data:
-        if review.get("items") and review["items"].get("metadata"):
-            topics = review["items"]["metadata"].get("topics", [])
-            for topic in topics:
-                by_topic[topic]["total"] += 1
-                if review["rating"] >= 3:
-                    by_topic[topic]["successful"] += 1
-
-    # Calculate success rate per topic
-    result = []
-    for topic, counts in by_topic.items():
-        success_rate = round(counts["successful"] / counts["total"] * 100, 1) if counts["total"] > 0 else 0
-        result.append({
+    return [
+        {
             "topic": topic,
-            "total_reviews": counts["total"],
-            "success_rate": success_rate
-        })
+            "total_reviews": len(ratings),
+            "success_rate": success_rate(sum(rating >= 3 for rating in ratings), len(ratings)),
+        }
+        for topic, ratings in sorted(ratings_by_topic.items(), key=lambda entry: len(entry[1]), reverse=True)
+    ]
 
-    return sorted(result, key=lambda x: x["total_reviews"], reverse=True)
 
-
-async def calculate_streak(user_id: str, supabase) -> int:
-    """Calculate current review streak in days."""
-    # Get reviews from last 60 days
-    start_date = datetime.now(timezone.utc) - timedelta(days=60)
-
-    response = supabase.table("reviews") \
-        .select("reviewed_at") \
-        .eq("user_id", user_id) \
-        .gte("reviewed_at", start_date.isoformat()) \
-        .order("reviewed_at", desc=True) \
+def calculate_streak(user_id: str, supabase: Client, now: datetime) -> int:
+    start = now - timedelta(days=60)
+    reviews = (
+        supabase.table("reviews")
+        .select("reviewed_at")
+        .eq("user_id", user_id)
+        .gte("reviewed_at", start.isoformat())
+        .order("reviewed_at", desc=True)
         .execute()
-
-    if not response.data:
+        .data
+    )
+    days = {date.fromisoformat(review["reviewed_at"][:10]) for review in reviews}
+    latest = max((day for day in days if day <= now.date()), default=None)
+    if latest is None:
         return 0
 
-    # Extract unique dates
-    dates_with_reviews = set()
-    for review in response.data:
-        date = review["reviewed_at"][:10]
-        dates_with_reviews.add(date)
-
-    # Count consecutive days from today
     streak = 0
-    current_date = datetime.now(timezone.utc).date()
-
-    while True:
-        if current_date.isoformat() in dates_with_reviews:
-            streak += 1
-            current_date -= timedelta(days=1)
-        else:
-            # Allow one day gap (grace period)
-            if streak == 0:
-                current_date -= timedelta(days=1)
-                if current_date < start_date.date():
-                    break
-            else:
-                break
-
+    while latest in days:
+        streak += 1
+        latest -= timedelta(days=1)
     return streak

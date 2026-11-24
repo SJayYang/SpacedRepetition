@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import UUID
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ItemCreate(BaseModel):
@@ -9,7 +9,7 @@ class ItemCreate(BaseModel):
     title: str
     external_id: Optional[str] = None
     external_url: Optional[str] = None
-    metadata: dict = {}
+    metadata: dict = Field(default_factory=dict)
     notes: Optional[str] = None
 
 
